@@ -50,11 +50,37 @@ func (u *syncUpdate) isLeafUpdate() bool {
 	return u.IsLeaf == "true"
 }
 
-// extUpdateInfo holds the LocalizedProperties for one update from the
-// ExtendedUpdateInfo section of the SyncUpdates response.
+// extUpdateInfo holds one <Update> entry from the ExtendedUpdateInfo section
+// of the SyncUpdates response.  Each numeric ID may appear twice — once with
+// a LocalizedProperties blob and once with an ExtendedProperties+Files blob.
 type extUpdateInfo struct {
-	ID                  int             `xml:"ID"`
+	ID  int    `xml:"ID"`
+	Xml string `xml:"Xml"` // HTML-escaped XML blob; parse via parseExtBlob
+}
+
+// extUpdateBlobFragment is parsed from the HTML-escaped <Xml> blob inside an
+// ExtendedUpdateInfo <Update> element.  The blob has no single root element so
+// callers must wrap it in a synthetic <root>…</root> before unmarshalling.
+// Files live at <root><ExtendedProperties><Files><File> — hence the full path.
+type extUpdateBlobFragment struct {
 	LocalizedProperties []localizedProp `xml:"LocalizedProperties"`
+	Files               []extFile       `xml:"ExtendedProperties>Files>File"`
+}
+
+// extFile represents one <File> entry inside an ExtendedProperties blob.
+type extFile struct {
+	FileName          string          `xml:"FileName,attr"`
+	Digest            string          `xml:"Digest,attr"` // base64-encoded SHA1
+	DigestAlgorithm   string          `xml:"DigestAlgorithm,attr"`
+	Size              int64           `xml:"Size,attr"`
+	Modified          string          `xml:"Modified,attr"` // RFC3339
+	AdditionalDigests []extFileDigest `xml:"AdditionalDigest"`
+}
+
+// extFileDigest holds one <AdditionalDigest Algorithm="SHA256">…</AdditionalDigest>.
+type extFileDigest struct {
+	Algorithm string `xml:"Algorithm,attr"`
+	Value     string `xml:",chardata"`
 }
 
 // ─── Extended update blob (parsed from XmlUpdateBlob) ─────────────────────

@@ -13,8 +13,21 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
-	"go.uber.org/zap"
 )
+
+// parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo
+// Update entry. Returns nil (not an error) when the blob is empty or unparseable.
+func parseExtBlob(blob string) *extUpdateBlobFragment {
+	if blob == "" {
+		return nil
+	}
+	wrapped := "<root>" + blob + "</root>"
+	var frag extUpdateBlobFragment
+	if err := xml.Unmarshal([]byte(wrapped), &frag); err != nil {
+		return nil
+	}
+	return &frag
+}
 
 // Ring → flight branch alias (used in DeviceAttributes and Products string).
 var ringToFlightBranch = map[string]string{
@@ -56,13 +69,28 @@ func (c *SOAPClient) fetchUpdates(ctx context.Context, req wuproto.FetchRequest)
 
 	ring := string(req.Ring)
 
-	// checkBuild is the OS version the device claims to be on. Using an old
-	// build (the PHP reference uses "10.0.16251.0") causes Windows Update to
-	// offer the current stable release as an upgrade, returning a leaf update
-	// with a proper UpdateID that EUI2 can resolve to CDN file URLs.
+	// checkBuild is the OS version the device claims to be on.
+	//
+	// For Insider rings (Dev/Beta/RP) an old Win10 build ("10.0.16251.0") causes
+	// WU to offer the current Insider builds because those rings use explicit
+	// FlightBranch values (WIF/WIS/RP) that override branch matching.
+	//
+	// For Retail ring the products string branch is derived from checkBuild via
+	// branchFromBuild(). If checkBuild is a legacy build (<17763 → rs_prerelease)
+	// WU marks the result OutOfScopeRevisionIDs because current Retail updates
+	// target ge_release (Win11 24H2). We therefore default to the Win11 24H2 GA
+	// build (10.0.26100.1) for non-flight rings so that CurrentBranch=ge_release
+	// and Branch=ge_release are both set correctly.
 	checkBuild := req.CheckBuild
 	if checkBuild == "" {
-		checkBuild = "10.0.16251.0"
+		flightBranch := ringToFlightBranch[ring]
+		if flightBranch != "" {
+			// Insider/flight ring: use old build to trigger feature-upgrade path.
+			checkBuild = "10.0.16251.0"
+		} else {
+			// Retail / non-flight ring: target Win11 24H2 GA → cumulative updates.
+			checkBuild = "10.0.26100.1"
+		}
 	}
 
 	buildType := string(req.Type)
@@ -130,7 +158,6 @@ func (c *SOAPClient) fetchUpdates(ctx context.Context, req wuproto.FetchRequest)
 		return nil, fmt.Errorf("read SyncUpdates response: %w", err)
 	}
 
-	c.logger.Debug("SyncUpdates response received", zap.Int("bytes", len(raw)))
 	return parseSyncUpdatesResponse(raw)
 }
 
@@ -149,14 +176,56 @@ func parseSyncUpdatesResponse(raw []byte) ([]wuproto.UpdateResult, error) {
 		return nil, fmt.Errorf("unmarshal SyncUpdates response: %w", err)
 	}
 
-	// Build a title lookup from ExtendedUpdateInfo (keyed by numeric update ID).
-	titleByID := make(map[int]string, len(env.Body.Result.ExtUpdates))
+	// Parse ExtendedUpdateInfo blobs — each numeric ID may appear twice:
+	// once with LocalizedProperties (title) and once with ExtendedProperties+Files.
+	type extInfo struct {
+		title string
+		files []wuproto.FileMetadata
+	}
+	extByID := make(map[int]*extInfo, len(env.Body.Result.ExtUpdates))
 	for _, ext := range env.Body.Result.ExtUpdates {
-		for _, lp := range ext.LocalizedProperties {
-			if lp.Title != "" {
-				titleByID[ext.ID] = lp.Title
-				break
+		frag := parseExtBlob(ext.Xml)
+		if frag == nil {
+			continue
+		}
+		ei := extByID[ext.ID]
+		if ei == nil {
+			ei = &extInfo{}
+			extByID[ext.ID] = ei
+		}
+		// Title from LocalizedProperties.
+		if ei.title == "" {
+			for _, lp := range frag.LocalizedProperties {
+				if lp.Title != "" {
+					ei.title = lp.Title
+					break
+				}
 			}
+		}
+		// File metadata from ExtendedProperties > Files.
+		for _, f := range frag.Files {
+			if shouldExclude(f.FileName) {
+				continue
+			}
+			fm := wuproto.FileMetadata{
+				Name:      f.FileName,
+				SHA1:      base64ToHex(f.Digest),
+				SizeBytes: f.Size,
+			}
+			if f.Modified != "" {
+				if t, err := time.Parse(time.RFC3339Nano, f.Modified); err == nil {
+					fm.Modified = t
+				} else if t, err := time.Parse(time.RFC3339, f.Modified); err == nil {
+					fm.Modified = t
+				}
+			}
+			for _, ad := range f.AdditionalDigests {
+				if ad.Algorithm == "SHA256" {
+					fm.SHA256 = base64ToHex(ad.Value)
+					break
+				}
+			}
+			ei.files = append(ei.files, fm)
 		}
 	}
 
@@ -186,19 +255,21 @@ func parseSyncUpdatesResponse(raw []byte) ([]wuproto.UpdateResult, error) {
 			revision = upd.RevisionNumber
 		}
 
+		ei := extByID[upd.ID]
+
 		result := wuproto.UpdateResult{
 			UpdateID:     updateID,
 			Revision:     revision,
-			Title:        titleByID[upd.ID],
 			DiscoveredAt: now,
+		}
+		if ei != nil {
+			result.Title = ei.title
+			result.Files = ei.files
 		}
 
 		// Arch and build version from ApplicabilityRules > IsInstalled > ProductReleaseInstalled.
 		result.Build = blob.ProductRelease.Version
 		result.Arch = productNameToArch(blob.ProductRelease.Name)
-
-		// SyncUpdates does not carry file URLs (files are secured and only
-		// retrievable via GetExtendedUpdateInfo2). Leave result.Files nil.
 
 		results = append(results, result)
 	}

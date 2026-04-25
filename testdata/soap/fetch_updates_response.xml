@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic SyncUpdates response matching the real WU wire format.
+     - UpdateInfo#123456789: IsLeaf=true, should be included (has UpdateIdentity + ApplicabilityRules)
+     - UpdateInfo#987654321: IsLeaf=false, should be excluded
+     - ExtendedUpdateInfo carries title + file metadata for ID 123456789 (two Update entries, same ID).
+     - Windows11.0-26120.4061-amd64-EXPRESS.cab should be filtered by shouldExclude.
+-->
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
   <s:Body>
     <SyncUpdatesResponse xmlns="http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService">
@@ -7,16 +13,28 @@
           <UpdateInfo>
             <ID>123456789</ID>
             <IsLeaf>true</IsLeaf>
-            <RevisionNumber>200</RevisionNumber>
-            <XmlUpdateBlob><![CDATA[<Update><LocalizedProperties><Language>en</Language><Title>Windows 11 Insider Preview Feature Update (26120.4061)</Title></LocalizedProperties><HandlerSpecificData><ProductReleaseInstalled Name="Client.OS.amd64" Version="10.0.26120.4061"/></HandlerSpecificData><Files><File Digest="ABCDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" FileName="Windows11.0-26120.4061-amd64.esd" Size="4294967296"><AdditionalDigest Algorithm="SHA256">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLM==</AdditionalDigest></File></Files></Update>]]></XmlUpdateBlob>
+            <Xml>&lt;UpdateIdentity UpdateID="test-uuid-1234-5678-abcd-ef0123456789" RevisionNumber="200" /&gt;&lt;ApplicabilityRules&gt;&lt;IsInstalled&gt;&lt;ProductReleaseInstalled Name="Client.OS.amd64" Version="10.0.26120.4061" /&gt;&lt;/IsInstalled&gt;&lt;IsInstallable&gt;&lt;True /&gt;&lt;/IsInstallable&gt;&lt;/ApplicabilityRules&gt;</Xml>
           </UpdateInfo>
           <UpdateInfo>
             <ID>987654321</ID>
             <IsLeaf>false</IsLeaf>
-            <RevisionNumber>1</RevisionNumber>
-            <XmlUpdateBlob></XmlUpdateBlob>
+            <Xml></Xml>
           </UpdateInfo>
         </NewUpdates>
+        <ExtendedUpdateInfo>
+          <Updates>
+            <!-- LocalizedProperties entry for ID 123456789 -->
+            <Update>
+              <ID>123456789</ID>
+              <Xml>&lt;LocalizedProperties&gt;&lt;Language&gt;en&lt;/Language&gt;&lt;Title&gt;Windows 11 Insider Preview Feature Update (26120.4061)&lt;/Title&gt;&lt;/LocalizedProperties&gt;</Xml>
+            </Update>
+            <!-- ExtendedProperties+Files entry for ID 123456789 (same ID, second occurrence) -->
+            <Update>
+              <ID>123456789</ID>
+              <Xml>&lt;ExtendedProperties ProductName="Client.OS.amd64" ReleaseVersion="10.0.26120.4061" Handler="http://schemas.microsoft.com/msus/2016/01/UpdateHandlers/OSInstaller" MaxDownloadSize="4294967296" MinDownloadSize="0" DefaultPropertiesLanguage="en" ContentType="ProductRelease" BrowseOnly="false"&gt;&lt;Files&gt;&lt;File FileName="Windows11.0-26120.4061-amd64.esd" Digest="ABCDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" Size="4294967296" Modified="2024-11-01T00:00:00Z"&gt;&lt;AdditionalDigest Algorithm="SHA256"&gt;ABCDEFGHIJKLMNOPQRSTUVWXYZ012345678901234567ABCDE=&lt;/AdditionalDigest&gt;&lt;/File&gt;&lt;File FileName="Windows11.0-26120.4061-amd64-EXPRESS.cab" Digest="ZZZDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" Size="12345"&gt;&lt;/File&gt;&lt;/Files&gt;&lt;/ExtendedProperties&gt;</Xml>
+            </Update>
+          </Updates>
+        </ExtendedUpdateInfo>
       </SyncUpdatesResult>
     </SyncUpdatesResponse>
   </s:Body>

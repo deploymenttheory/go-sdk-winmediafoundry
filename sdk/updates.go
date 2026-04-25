@@ -24,7 +24,12 @@ type FetchRequest struct {
 	Ring   string `json:"ring"`
 	Flight string `json:"flight"`
 	Build  string `json:"build,omitempty"`
-	SKU    int    `json:"sku,omitempty"`
+	// CheckBuild is the OS version the device claims to be running. Set to an
+	// old build (e.g. "10.0.16251.0") to receive the current stable Windows 11
+	// release as an upgrade offer. Defaults to "10.0.16251.0" server-side when
+	// empty.
+	CheckBuild string `json:"check_build,omitempty"`
+	SKU        int    `json:"sku,omitempty"`
 }
 
 // Fetch triggers a live Windows Update SOAP query on the server.

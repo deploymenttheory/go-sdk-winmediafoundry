@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <SyncUpdatesResponse xmlns="http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService">
+      <SyncUpdatesResult>
+        <NewUpdates>
+          <UpdateInfo>
+            <ID>123456789</ID>
+            <IsLeaf>true</IsLeaf>
+            <RevisionNumber>200</RevisionNumber>
+            <XmlUpdateBlob><![CDATA[<Update><LocalizedProperties><Language>en</Language><Title>Windows 11 Insider Preview Feature Update (26120.4061)</Title></LocalizedProperties><HandlerSpecificData><ProductReleaseInstalled Name="Client.OS.amd64" Version="10.0.26120.4061"/></HandlerSpecificData><Files><File Digest="ABCDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" FileName="Windows11.0-26120.4061-amd64.esd" Size="4294967296"><AdditionalDigest Algorithm="SHA256">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLM==</AdditionalDigest></File></Files></Update>]]></XmlUpdateBlob>
+          </UpdateInfo>
+          <UpdateInfo>
+            <ID>987654321</ID>
+            <IsLeaf>false</IsLeaf>
+            <RevisionNumber>1</RevisionNumber>
+            <XmlUpdateBlob></XmlUpdateBlob>
+          </UpdateInfo>
+        </NewUpdates>
+      </SyncUpdatesResult>
+    </SyncUpdatesResponse>
+  </s:Body>
+</s:Envelope>

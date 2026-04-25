@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <GetCookieResponse xmlns="http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService">
+      <GetCookieResult>
+        <Expiration>2026-04-26T00:00:00+00:00</Expiration>
+        <EncryptedData>AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYYY==</EncryptedData>
+      </GetCookieResult>
+    </GetCookieResponse>
+  </s:Body>
+</s:Envelope>

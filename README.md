@@ -1,75 +1,238 @@
-# Template
+# go-sdk-uupdump
 
-This repository serves as a **Default Template Repository** according official [GitHub Contributing Guidelines][ProjectSetup] for healthy contributions. It brings you clean default Templates for several areas:
+[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-uupdump)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-uupdump)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-uupdump)](https://github.com/deploymenttheory/go-sdk-uupdump)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
-- [Azure DevOps Pull Requests](.azuredevops/PULL_REQUEST_TEMPLATE.md) ([`.azuredevops\PULL_REQUEST_TEMPLATE.md`](`.azuredevops\PULL_REQUEST_TEMPLATE.md`))
-- [Azure Pipelines](.pipelines/pipeline.yml) ([`.pipelines/pipeline.yml`](`.pipelines/pipeline.yml`))
-- [GitHub Workflows](.github/workflows/)
-  - [Super Linter](.github/workflows/linter.yml) ([`.github/workflows/linter.yml`](`.github/workflows/linter.yml`))
-  - [Sample Workflows](.github/workflows/workflow.yml) ([`.github/workflows/workflow.yml`](`.github/workflows/workflow.yml`))
-- [GitHub Pull Requests](.github/PULL_REQUEST_TEMPLATE.md) ([`.github/PULL_REQUEST_TEMPLATE.md`](`.github/PULL_REQUEST_TEMPLATE.md`))
-- [GitHub Issues](.github/ISSUE_TEMPLATE/)
-  - [Feature Requests](.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md) ([`.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md`](`.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md`))
-  - [Bug Reports](.github/ISSUE_TEMPLATE/BUG_REPORT.md) ([`.github/ISSUE_TEMPLATE/BUG_REPORT.md`](`.github/ISSUE_TEMPLATE/BUG_REPORT.md`))
-- [Codeowners](.github/CODEOWNERS) ([`.github/CODEOWNERS`](`.github/CODEOWNERS`)) _adjust usernames once cloned_
-- [Wiki and Documentation](docs/) ([`docs/`](`docs/`))
-- [gitignore](.gitignore) ([`.gitignore`](.gitignore))
-- [gitattributes](.gitattributes) ([`.gitattributes`](.gitattributes))
-- [Changelog](CHANGELOG.md) ([`CHANGELOG.md`](`CHANGELOG.md`))
-- [Code of Conduct](CODE_OF_CONDUCT.md) ([`CODE_OF_CONDUCT.md`](`CODE_OF_CONDUCT.md`))
-- [Contribution](CONTRIBUTING.md) ([`CONTRIBUTING.md`](`CONTRIBUTING.md`))
-- [License](LICENSE) ([`LICENSE`](`LICENSE`)) _adjust projectname once cloned_
-- [Readme](README.md) ([`README.md`](`README.md`))
-- [Security](SECURITY.md) ([`SECURITY.md`](`SECURITY.md`))
+A native Go implementation of the Windows Update SOAP protocol. Queries Microsoft's
+`fe3.delivery.mp.microsoft.com` update endpoints directly — no intermediary service
+required — to discover Windows builds, resolve CDN download URLs, and stream ESD/CAB
+files from `tlu.dl.delivery.mp.microsoft.com`.
 
+## What it does
 
-## Status
+| Capability | Detail |
+|---|---|
+| Build discovery | SyncUpdates SOAP call against live Windows Update endpoints |
+| File URL resolution | GetExtendedUpdateInfo2 (EUI2) returns pre-signed Microsoft CDN URLs |
+| Streaming download | Proxy any file directly from CDN via the REST API |
+| Build catalog | SQLite-backed store with full-text search, pagination, and change feed |
+| Change feed | Server-Sent Events stream of build discoveries and updates |
+| Background watcher | Configurable poll interval keeps catalog current automatically |
+| REST API | mTLS-protected HTTP server exposing all catalog and live-query operations |
 
-[![Super Linter](<https://github.com/segraef/Template/actions/workflows/linter.yml/badge.svg>)](<https://github.com/segraef/Template/actions/workflows/linter.yml>)
+## Architecture
 
-[![Sample Workflow](<https://github.com/segraef/Template/actions/workflows/workflow.yml/badge.svg>)](<https://github.com/segraef/Template/actions/workflows/workflow.yml>)
+```
+Windows Update SOAP endpoints
+  fe3.delivery.mp.microsoft.com   ← SyncUpdates (build discovery)
+  fe3cr.delivery.mp.microsoft.com ← GetExtendedUpdateInfo2 (CDN file URLs)
+          │
+          ▼
+  wuproto/soap   ← SOAP protocol implementation
+          │
+          ▼
+  winupdate      ← Service layer (orchestrates SOAP + catalog)
+          │
+   ┌──────┴──────┐
+   ▼             ▼
+catalog/store  api/    ← SQLite catalog + mTLS REST API
+(SQLite)       (HTTP)
+```
 
-## Creating a repository from a template
+CDN file URLs returned by EUI2 point to:
+```
+https://tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/<sha1>?P1=…&P2=…&P3=…&P4=…
+```
+These are time-limited pre-signed tokens. No decryption is required — a plain `curl` GET
+downloads the file.
 
-You can [generate](https://github.com/segraef/Template/generate) a new repository with the same directory structure and files as an existing repository. More details can be found [here][CreateFromTemplate].
+## Quick start
 
-## Reporting Issues and Feedback
+### With Docker
 
-### Issues and Bugs
+```bash
+# Generate self-signed mTLS certificates
+./scripts/gen-certs.sh
 
-If you find any bugs, please file an issue in the [GitHub Issues][GitHubIssues] page. Please fill out the provided template with the appropriate information.
+# Build and start
+docker compose up --build -d
 
-If you are taking the time to mention a problem, even a seemingly minor one, it is greatly appreciated, and a totally valid contribution to this project. **Thank you!**
+# Verify
+curl --cacert certs/ca.crt https://localhost:8443/healthz
+```
 
-## Feedback
+### As a CLI binary
 
-If there is a feature you would like to see in here, please file an issue or feature request in the [GitHub Issues][GitHubIssues] page to provide direct feedback.
+```bash
+go install github.com/deploymenttheory/go-sdk-uupdump/cmd/winupdate@latest
 
-## Contribution
+# Discover current Windows 11 builds from Retail ring
+winupdate fetch --arch amd64 --ring Retail
 
-If you would like to become an active contributor to this repository or project, please follow the instructions provided in [`CONTRIBUTING.md`][Contributing].
+# Start the API server (plain HTTP for local dev)
+winupdate serve --db winupdate.db --addr :8080
+```
 
-## Learn More
+## CLI reference
 
-* [GitHub Documentation][GitHubDocs]
-* [Azure DevOps Documentation][AzureDevOpsDocs]
-* [Microsoft Azure Documentation][MicrosoftAzureDocs]
+### `winupdate fetch`
 
-<!-- References -->
+Performs a live SyncUpdates SOAP query and writes results to the catalog.
 
-<!-- Local -->
-[ProjectSetup]: <https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions>
-[CreateFromTemplate]: <https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/creating-a-repository-from-a-template>
-[GitHubDocs]: <https://docs.github.com/>
-[AzureDevOpsDocs]: <https://docs.microsoft.com/en-us/azure/devops/?view=azure-devops>
-[GitHubIssues]: <https://github.com/segraef/Template/issues>
-[Contributing]: CONTRIBUTING.md
+```
+winupdate fetch [flags]
 
-<!-- External -->
-[Az]: <https://img.shields.io/powershellgallery/v/Az.svg?style=flat-square&label=Az>
-[AzGallery]: <https://www.powershellgallery.com/packages/Az/>
-[PowerShellCore]: <https://github.com/PowerShell/PowerShell/releases/latest>
+Flags:
+  --arch          amd64 | arm64 | x86          (default: amd64)
+  --ring          Retail | ReleasePreview | Beta | Dev | Canary  (default: Retail)
+  --flight        Active | Skip | Current       (default: Active)
+  --build         target build filter, e.g. "26100.8313" (empty = latest)
+  --check-build   OS version the WU client claims to be on.
+                  An old value causes WU to offer the current stable release
+                  as an upgrade. (default: 10.0.16251.0)
+  --sku           Windows SKU number (default 0 = Professional / SKU 48)
+  --db            SQLite database path (default: winupdate.db)
+```
 
-<!-- Docs -->
-[MicrosoftAzureDocs]: <https://docs.microsoft.com/en-us/azure/>
-[PowerShellDocs]: <https://docs.microsoft.com/en-us/powershell/>
+Example — discover Windows 11 24H2 from Retail:
+
+```bash
+winupdate fetch --arch amd64 --ring Retail --check-build 10.0.16251.0
+```
+
+### `winupdate serve`
+
+Starts the mTLS-protected REST API server.
+
+```
+winupdate serve [flags]
+
+Flags:
+  --addr          listen address (default: :8443)
+  --db            SQLite database path (default: winupdate.db)
+  --cert          server TLS certificate file
+  --key           server TLS key file
+  --ca            CA certificate file for mTLS client verification
+  --watch-interval  background watcher poll interval (default: 30m)
+  --no-watcher    disable background Windows Update watcher
+```
+
+## REST API
+
+All `/v1/` routes require a valid client certificate when the server is started with `--cert`/`--ca`.
+`/healthz` and `/readyz` are accessible without a client certificate.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/v1/builds` | List builds (filterable, paginated) |
+| `GET` | `/v1/builds/:uuid` | Get a single build |
+| `GET` | `/v1/builds/:uuid/files` | List files; add `?with_urls=true&revision=N` for CDN URLs |
+| `GET` | `/v1/builds/:uuid/files/:name/download` | Stream file from Microsoft CDN |
+| `GET` | `/v1/builds/:uuid/diff/:target` | Diff two builds' file sets |
+| `POST` | `/v1/updates/fetch` | Trigger a live SyncUpdates query |
+| `GET` | `/v1/feed` | Server-Sent Events change feed |
+
+### Fetch a build (HTTP API)
+
+```bash
+curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     -X POST https://localhost:8443/v1/updates/fetch \
+     -H 'Content-Type: application/json' \
+     -d '{"arch":"amd64","ring":"Retail","check_build":"10.0.16251.0"}'
+```
+
+### Resolve CDN file URLs
+
+```bash
+UUID=<build-uuid>
+REV=<revision>
+
+curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     "https://localhost:8443/v1/builds/$UUID/files?with_urls=true&revision=$REV" \
+     | jq '.data[] | {name, size_bytes, url}'
+```
+
+### Download a file directly from Microsoft CDN
+
+```bash
+CDN_URL=$(curl --cert certs/client.crt ... \
+    "https://localhost:8443/v1/builds/$UUID/files?with_urls=true&revision=$REV" \
+    | jq -r '.data[0].url')
+
+curl -o windows11.esd "$CDN_URL"
+```
+
+Or via the REST API (server proxies the stream):
+
+```bash
+curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     -o windows11.esd \
+     "https://localhost:8443/v1/builds/$UUID/files/windows11.esd/download?revision=$REV"
+```
+
+## ISO assembly
+
+Once ESD/CAB files are downloaded they can be assembled into a bootable ISO on Linux or macOS
+using standard open-source tools:
+
+```bash
+# Install prerequisites (Debian/Ubuntu)
+sudo apt-get install cabextract wimtools chntpw genisoimage
+
+# Install prerequisites (macOS with Homebrew)
+brew tap sidneys/homebrew
+brew install cabextract wimlib cdrtools sidneys/homebrew/chntpw
+```
+
+UUP dump's converter scripts (`uup_download_linux.sh`, `uup_download_macos.sh`) use these
+tools to turn the downloaded ESD/CAB set into a bootable ISO.
+
+## TLS certificates (development)
+
+```bash
+# Generate self-signed CA + server + client certs in ./certs/
+./scripts/gen-certs.sh
+
+# Call the API with mTLS
+curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     https://localhost:8443/v1/builds
+```
+
+## Packages
+
+| Package | Description |
+|---|---|
+| `wuproto` | Interface and domain types for the WU SOAP protocol |
+| `wuproto/soap` | SOAP client: GetCookie → SyncUpdates → GetExtendedUpdateInfo2 |
+| `catalog` | Domain types and Store/EventEmitter interfaces |
+| `catalog/store` | SQLite implementation of catalog.Store |
+| `catalog/watcher` | Background poller that keeps the catalog current |
+| `catalog/events` | In-process event bus for build lifecycle events |
+| `winupdate` | Service layer orchestrating SOAP + catalog |
+| `api` | HTTP server setup and routing |
+| `api/handlers` | Per-resource HTTP handlers |
+| `api/middleware` | mTLS enforcement, logging, recovery |
+| `sdk` | Thin Go client for the REST API |
+| `cmd/winupdate` | CLI binary |
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-change`)
+3. Commit your changes
+4. Open a pull request against `main`
+
+All submissions must pass `go build ./...` and `go vet ./...`.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+## Disclaimer
+
+This project is an independent implementation. It is not affiliated with, endorsed by, or
+supported by Microsoft. Use in accordance with Microsoft's acceptable use policies.

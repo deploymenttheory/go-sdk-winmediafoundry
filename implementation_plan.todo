@@ -1,0 +1,288 @@
+Ready to code?                                                                                     
+                                                                                                    
+ Here is Claude's plan:                                                                           
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Plan: Fix Windows Update SOAP discovery to find installable build packages (ESDs)
+                                                                                                  
+ Context
+
+ Windows Update serves full feature-upgrade packages for Windows 11 (e.g. 24H2 build 26100.8313)
+ as a set of .esd/.cab files hosted on Microsoft's CDN at
+ tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/. These CDN URLs are obtained
+ natively via the GetExtendedUpdateInfo2 (EUI2) SOAP call — no intermediary like UUP dump is
+ required. Once a client has the CDN URLs it can:
+
+ 1. Download any individual file with a plain curl GET (no auth, no decryption — URLs are
+ time-limited pre-signed tokens).
+ 2. Assemble a bootable ISO using standard open-source tools available on Linux and macOS:
+ cabextract, wimlib-imagex, chntpw, genisoimage/mkisofs.
+
+ UUP dump itself uses this same CDN — its get.php?aria2=2 endpoint just emits an aria2
+ download script that points at these same tlu.dl.delivery.mp.microsoft.com URLs.
+
+ Our native implementation currently returns 0 CDN file URLs from EUI2 for all builds.
+ Root cause analysis against the PHP reference source at git.uupdump.net/uup-dump/api
+ reveals three bugs in our Go implementation that prevent both build discovery and file
+ URL resolution.
+
+ ---
+ Root Cause Analysis
+
+ Bug 1 — Wrong product prefix in buildProductsString (fetch.go:474)
+
+ Our code emits Client.OS.rs2.{arch} for SKU 48 (Windows Professional). The PHP reference
+ uses Client.OS.{arch}. The .rs2 suffix was a Redstone 2 era name (circa 2017); modern WU
+ endpoints no longer map it to the same update catalogue. This causes our SyncUpdates request
+ to be offered a different (or empty) set of updates than the PHP reference would receive.
+
+ Fix: Change the fallback product prefix from "Client.OS.rs2" → "Client.OS".
+
+ Bug 2 — Wrong base build for discovery: we claim to be on 24H2 already
+
+ Our default build = "10.0.26100.0" means we're claiming to be on Windows 11 24H2 baseline.
+ In Retail ring, WU responds with 0 updates (we're already current). In Dev ring, WU offers the
+ NEXT feature update (26300.x) — a pre-release upgrade, not a stable 24H2 installation package.
+
+ The PHP reference defaults its base build to "10.0.16251.0" — an ancient Windows 10 Insider
+ build. This makes WU think the device needs upgrading all the way to the latest stable release
+ (e.g., Windows 11 24H2 build 26100.8313), and returns that as a leaf update with a proper
+ UpdateID that EUI2 will resolve to CDN file URLs.
+
+ Fix: Add a CheckBuild field to wuproto.FetchRequest. When empty, default to
+ "10.0.16251.0". Use CheckBuild as the version in OSVersion, AppVer, MediaVersion,
+ WuClientVer device attribute fields and as the version in the Products string primary
+ product V= parameter. The existing Build field (currently controlling syncCurrentOnly)
+ becomes the optional target-build filter.
+
+ Bug 3 — EUI2 device attributes hardcoded to a stale Windows 10 build
+
+ fileurl.go:37 hardcodes buildDeviceAttributes("amd64", "Retail", "10.0.19041.1", ...) for
+ every EUI2 call regardless of the update being queried. The PHP reference uses device attributes
+ with OSVersion matching the found build (e.g., 10.0.26100.8313) and the original ring
+ used in SyncUpdates. Mismatched attributes cause the fe3cr endpoint to return an empty
+ <GetExtendedUpdateInfo2Result/>.
+
+ Fix: Add Arch, Ring, Build fields to wuproto.FileURLRequest. The SOAPClient
+ will build EUI2 device attributes from those fields instead of the hardcoded values.
+ winupdate/builds.go and winupdate/files.go will pass the build's arch/ring/build into
+ FileURLRequest when they call GetFileURLs.
+
+ ---
+ Files to Modify
+
+ ┌─────────────────────────────────┬────────────────────────────────────────────────────────────┐
+ │              File               │                           Change                           │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ wuproto/interface.go            │ Add CheckBuild string to FetchRequest; add Arch, Ring,     │
+ │                                 │ Build to FileURLRequest                                    │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │                                 │ Bug 1: Client.OS.rs2 → Client.OS; Bug 2: use               │
+ │ wuproto/soap/fetch.go           │ req.CheckBuild (default 10.0.16251.0) as the               │
+ │                                 │ OSVersion/Products version                                 │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │                                 │ Bug 3: replace hardcoded 10.0.19041.1/Retail with          │
+ │ wuproto/soap/fileurl.go         │ req.Arch/req.Ring/req.Build passed to                      │
+ │                                 │ buildDeviceAttributes                                      │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ winupdate/builds.go             │ Pass r.Arch, r.Ring, r.Build through FetchAndStoreRequest  │
+ │                                 │ → FileURLRequest where needed                              │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ winupdate/files.go              │ Populate FileURLRequest.Arch/Ring/Build from the catalog   │
+ │                                 │ Build record when calling GetFileURLs                      │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ api/handlers/updates.go         │ Expose check_build JSON field in fetchRequest, pass        │
+ │                                 │ through to FetchAndStoreRequest                            │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ cmd/winupdate/commands/fetch.go │ Add --check-build flag (default 10.0.16251.0)              │
+ ├─────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ scripts/test-api.sh             │ Add step 2b: fetch with check_build=10.0.16251.0           │
+ │                                 │ ring=Retail, then resolve files + download                 │
+ └─────────────────────────────────┴────────────────────────────────────────────────────────────┘
+
+ ---
+ Implementation Steps
+
+ Step 1 �� Fix product prefix (fetch.go)
+
+ // wuproto/soap/fetch.go  ~line 474
+ productPrefix, ok := skuToProduct[sku]
+ if !ok {
+     productPrefix = "Client.OS"  // was "Client.OS.rs2"
+ }
+
+ Step 2 — Add CheckBuild to FetchRequest + wire through fetch.go
+
+ wuproto/interface.go:
+ type FetchRequest struct {
+     Arch        Arch
+     Ring        Ring
+     Flight      Flight
+     Build       string  // empty = latest (was the build version)
+     CheckBuild  string  // base OS version device claims to be on; default "10.0.16251.0"
+     SKU         int
+     Type        BuildType
+ }
+
+ wuproto/soap/fetch.go — fetchUpdates():
+ checkBuild := req.CheckBuild
+ if checkBuild == "" {
+     checkBuild = "10.0.16251.0"  // PHP reference default
+ }
+ // Use checkBuild everywhere previously using `build` in device attrs + products:
+ deviceAttrs := buildDeviceAttributes(arch, ring, checkBuild, "", sku, buildType)
+ products    := buildProductsString(arch, ring, checkBuild, sku)
+
+ The Products string primary product now becomes:
+ fmt.Sprintf("PN=Client.OS.%s&Branch=%s&PrimaryOSProduct=1&Repairable=1&V=%s&ReofferUpdate=1",
+     arch, branch, checkBuild)
+
+ Step 3 — Fix EUI2 device attributes
+
+ wuproto/interface.go:
+ type FileURLRequest struct {
+     UpdateID string
+     Revision int
+     // Arch/Ring/Build should match the update's origin context for EUI2.
+     // If empty, sensible defaults are used.
+     Arch  Arch
+     Ring  Ring
+     Build string
+ }
+
+ wuproto/soap/fileurl.go — getFileURLs():
+ arch  := string(req.Arch);  if arch == ""  { arch = "amd64" }
+ ring  := string(req.Ring);  if ring == ""  { ring = "Retail" }
+ build := req.Build;         if build == "" { build = "10.0.26100.0" }
+ deviceAttrs := buildDeviceAttributes(arch, ring, build, "", 48, "Production")
+
+ Step 4 — Propagate arch/ring/build into FileURLRequest callers
+
+ winupdate/files.go — GetFiles() when req.WithURLs:
+ // Pull arch/ring/build from the catalog Build record so EUI2 gets correct context.
+ b, err := s.store.GetBuild(ctx, req.UUID)
+ // ...
+ urls, err := s.wu.GetFileURLs(ctx, wuproto.FileURLRequest{
+     UpdateID: req.UUID,
+     Revision: req.Revision,
+     Arch:     wuproto.Arch(b.Arch),
+     Ring:     wuproto.Ring(b.Ring),
+     Build:    b.Build,
+ })
+
+ winupdate/download.go — StreamDownload(): same pattern; look up build from catalog.
+
+ Step 5 — Expose check_build in the HTTP API and CLI
+
+ api/handlers/updates.go:
+ type fetchRequest struct {
+     Arch       string `json:"arch"`
+     Ring       string `json:"ring"`
+     Flight     string `json:"flight"`
+     Build      string `json:"build"`
+     CheckBuild string `json:"check_build"`  // new
+     SKU        int    `json:"sku"`
+ }
+
+ cmd/winupdate/commands/fetch.go:
+ fetchCmd.Flags().String("check-build", "10.0.16251.0",
+     "base OS version the WU client claims to be on (controls which upgrades are offered)")
+
+ ---
+ Validation
+
+ Expected outcome after fixes
+
+ # 1. Fetch Windows 11 24H2 packages from Retail by starting from an old base
+ docker compose exec winupdate winupdate fetch \
+     --db /data/winupdate.db \
+     --arch amd64 --ring Retail \
+     --check-build 10.0.16251.0
+ # Expected: ≥1 new build, title contains "Windows 11" and build "26100.x"
+
+ # 2. List builds — should see 26100.x in Retail/amd64
+ curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     https://localhost:8443/v1/builds | jq '.data[] | {build, arch, ring}'
+
+ # 3. Get file URLs via EUI2 for the new build UUID
+ UUID=$(curl ... https://localhost:8443/v1/builds | jq -r '.data[0].uuid')
+ REV=$(curl ... https://localhost:8443/v1/builds/$UUID | jq -r '.data.revision')
+ curl ... "https://localhost:8443/v1/builds/$UUID/files?with_urls=true&revision=$REV" \
+     | jq '.data[] | {name, size_bytes, url}'
+ # Expected: ≥1 file entry with a non-empty .url field (CDN URL)
+
+ # 4. Poke CDN URL directly with curl (proves URL is valid, no decryption needed)
+ CDN_URL=$(curl ... | jq -r '.data[0].url')
+ curl -I "$CDN_URL"
+ # Expected: HTTP 200 with Content-Length, Content-Type: application/octet-stream
+
+ # 5. Download the smallest ESD file via the REST API
+ curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
+     -o downloads/windows11.esd \
+     "https://localhost:8443/v1/builds/$UUID/files/windows11.esd/download?revision=$REV"
+ # Expected: file saved to disk, SHA1 matches value from EUI2 response
+
+ What "Windows 11 24H2 (26100.8313) amd64" actually is
+
+ A feature-upgrade package served by Windows Update when a device claims to be on an old build.
+ It is distributed as a set of ESD files (one per edition — Home, Pro, Education, etc.), language
+ pack cabs, Features-on-Demand cabs, and driver cabs — totalling ~10 GB for a full en-us set
+ with core + professional editions.
+
+ The CDN URLs from EUI2 point directly to
+ tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/<sha1>?P1=…&P2=…&P3=…&P4=….
+ No decryption is required — the files are raw ESDs/cabs accessible with a plain curl GET.
+
+ ISO assembly
+
+ Once the ESD/cab files are downloaded, a bootable ISO can be built on Linux/macOS using:
+
+ ┌────────────────────────┬──────────────────────────────────┐
+ │          Tool          │             Purpose              │
+ ├────────────────────────┼──────────────────────────────────┤
+ │ cabextract             │ Extract cabinet (.cab) archives  │
+ ├────────────────────────┼──────────────────────────────────┤
+ │ wimlib-imagex          │ Export WIM images from ESD files │
+ ├────────────────────────┼──────────────────────────────────┤
+ │ chntpw                 │ Patch registry in boot.wim       │
+ ├────────────────────────┼──────────────────────────────────┤
+ │ genisoimage or mkisofs │ Write final bootable ISO         │
+ └────────────────────────┴──────────────────────────────────┘
+
+ These are available on Debian/Ubuntu (apt-get install cabextract wimtools chntpw genisoimage)
+     A feature-upgrade package served by Windows Update when a device claims to be on an old build.
+     It is distributed as a set of ESD files (one per edition — Home, Pro, Education, etc.),
+     language
+     pack cabs, Features-on-Demand cabs, and driver cabs — totalling ~10 GB for a full en-us set
+     with core + professional editions.
+                                                                         
+     The CDN URLs from EUI2 point directly to                                       
+     tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/<sha1>?P1=…&P2=…&P3=…&P4=….
+     No decryption is required — the files are raw ESDs/cabs accessible with a plain curl GET.      
+
+     ISO assembly                                                                
+
+     Once the ESD/cab files are downloaded, a bootable ISO can be built on Linux/macOS using:
+                                 
+     ┌────────────────────────┬──────────────────────────────────┐
+     │          Tool          │             Purpose              │
+     ├────────────────────────┼──────────────────────────────────┤
+     │ cabextract             │ Extract cabinet (.cab) archives  │
+     ├────────────────────────┼──────────────────────────────────┤         
+     │ wimlib-imagex          │ Export WIM images from ESD files │
+     ├────────────────────────┼──────────────────────────────────┤
+     │ chntpw                 │ Patch registry in boot.wim       │
+     ├────────────────────────┼──────────────────────────────────┤
+     │ genisoimage or mkisofs │ Write final bootable ISO         │
+     └────────────────────────┴──────────────────────────────────┘
+
+     These are available on Debian/Ubuntu (apt-get install cabextract wimtools chntpw genisoimage)
+     and macOS via Homebrew. ISO assembly is a follow-on feature; the three SOAP bug fixes are
+     the prerequisite that unlocks the CDN URLs.
+
+     Additional housekeeping tasks (separate from SOAP fixes)
+
+     1. .gitignore — add /data/, /certs/, /downloads/, *.db, winupdate binary
+     2. README.md — rewrite to describe the current native WU SOAP platform (not the old
+     UUP dump JSON API wrapper SDK that the existing README documents)
+
+                   

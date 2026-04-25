@@ -10,11 +10,20 @@
 !.vscode/extensions.json
 *.code-workspace
 
+# Runtime data (created by docker / CLI at runtime)
+/data/
+/certs/
+/downloads/
+*.db
+
 # Build and temp files
 /build/
 /tmp/
 *.log
 *.bak
+
+# Compiled binaries
+winupdate
 
 # Windows-specific 
 *.winfile eol=crlf

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <GetExtendedUpdateInfo2Response xmlns="http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService">
+      <GetExtendedUpdateInfo2Result>
+        <FileLocations>
+          <!-- Valid SHA1 base64: 20 bytes each, distinct values -->
+          <FileLocation>
+            <FileDigest>AAAAAAAAAAAAAAAAAAAAAAAAAAAB</FileDigest>
+            <Url>https://download.windowsupdate.com/files/abc123/Windows11.0-26120.4061-amd64.esd?P1=1745798400&amp;P2=val&amp;P3=val</Url>
+          </FileLocation>
+          <FileLocation>
+            <FileDigest>AAAAAAAAAAAAAAAAAAAAAAAAAAAC</FileDigest>
+            <Url>https://download.windowsupdate.com/files/def456/Windows11.0-26120.4061-lang.cab?P1=1745798400&amp;P2=val&amp;P3=val</Url>
+          </FileLocation>
+          <!-- PSF file — must be excluded -->
+          <FileLocation>
+            <FileDigest>AAAAAAAAAAAAAAAAAAAAAAAAAAAD</FileDigest>
+            <Url>https://download.windowsupdate.com/files/psf456/somepatch.psf?P1=1745798400</Url>
+          </FileLocation>
+        </FileLocations>
+      </GetExtendedUpdateInfo2Result>
+    </GetExtendedUpdateInfo2Response>
+  </s:Body>
+</s:Envelope>

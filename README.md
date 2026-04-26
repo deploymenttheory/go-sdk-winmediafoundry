@@ -1,182 +1,234 @@
-# go-sdk-windowsuup
-
 [![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-windowsuup)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-windowsuup)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-windowsuup)](https://github.com/deploymenttheory/go-sdk-windowsuup)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
-A native Go implementation of the Windows Unified Update (SOAP) protocol. Queries Microsoft's `fe3.delivery.mp.microsoft.com` update endpoints directly — no intermediary service required — to discover Windows builds, resolve CDN download URLs, and stream ESD/CAB files from `tlu.dl.delivery.mp.microsoft.com`.
+## Getting Started with `go-sdk-windowsuup`
 
-[Windows Update overview](https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-overview)
+`go-sdk-windowsuup` is a pure Go client library for Microsoft's Windows Update SOAP protocol. It makes direct SOAP calls to `fe3.delivery.mp.microsoft.com` and `fe3cr.delivery.mp.microsoft.com`. Use it to discover available Windows builds by ring and architecture, resolve pre-signed CDN download URLs, stream ESD/CAB files to disk, and compare file sets between builds.
 
-## What it does
+## Go Prerequisites
 
-| Capability | Detail |
+- Go 1.23 or later
+- Outbound HTTPS (port 443) to `fe3.delivery.mp.microsoft.com` and `fe3cr.delivery.mp.microsoft.com`
+- No certificates required - the SDK handles the Microsoft CA chain for you.
+
+## Installation
+
+```bash
+go get github.com/deploymenttheory/go-sdk-windowsuup
+```
+
+## Usage
+
+Runnable examples are in the `examples/` directory:
+
+| Example | Description |
 |---|---|
-| Build discovery | SyncUpdates SOAP call against live Windows Update endpoints |
-| File URL resolution | GetExtendedUpdateInfo2 (EUI2) returns pre-signed Microsoft CDN URLs |
-| Streaming download | Proxy any file directly from CDN via the REST API |
-| Build catalog | SQLite-backed store with full-text search, pagination, and change feed |
-| Change feed | Server-Sent Events stream of build discoveries and updates |
-| Background watcher | Configurable poll interval keeps catalog current automatically |
-| REST API | mTLS-protected HTTP server exposing all catalog and live-query operations |
+| `examples/01_fetch_builds` | Discover available Windows builds by ring and architecture |
+| `examples/02_get_files` | Resolve pre-signed CDN download URLs for a build's files |
+| `examples/03_download` | Stream ESD/CAB files concurrently to a local directory |
+| `examples/04_diff` | Compare file sets between two builds |
 
-## Architecture
-
-```
-Windows Update SOAP endpoints
-  fe3.delivery.mp.microsoft.com   ← SyncUpdates (build discovery)
-  fe3cr.delivery.mp.microsoft.com ← GetExtendedUpdateInfo2 (CDN file URLs)
-          │
-          ▼
-  wuproto/soap   ← SOAP protocol implementation
-          │
-          ▼
-  winupdate      ← Service layer (orchestrates SOAP + catalog)
-          │
-   ┌──────┴──────┐
-   ▼             ▼
-catalog/store  api/    ← SQLite catalog + mTLS REST API
-(SQLite)       (HTTP)
-```
-
-CDN file URLs returned by EUI2 point to:
-```
-https://tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/<sha1>?P1=…&P2=…&P3=…&P4=…
-```
-These are time-limited pre-signed tokens. No decryption is required — a plain `curl` GET
-downloads the file.
-
-## Quick start
-
-### With Docker
+Run any example directly:
 
 ```bash
-# Generate self-signed mTLS certificates
-./scripts/gen-certs.sh
-
-# Build and start
-docker compose up --build -d
-
-# Verify
-curl --cacert certs/ca.crt https://localhost:8443/healthz
+go run ./examples/01_fetch_builds
 ```
 
-### As a CLI binary
+## Creating a Client
 
-```bash
-go install github.com/deploymenttheory/go-sdk-windowsuup/cmd/winupdate@latest
+```go
+import "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
 
-# Discover current Windows 11 builds from Retail ring
-winupdate fetch --arch amd64 --ring Retail
-
-# Start the API server (plain HTTP for local dev)
-winupdate serve --db winupdate.db --addr :8080
+client, err := windowsuup.NewClient()
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
-## CLI reference
+`NewClient` accepts zero or more `ClientOption` values:
 
-### `winupdate fetch`
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `WithTimeout(d)` | `time.Duration` | 2 min | Per-SOAP-request HTTP timeout; CDN downloads are exempt |
+| `WithTLSConfig(cfg)` | `*tls.Config` | embedded Microsoft CA bundle + system roots | Custom TLS configuration for SOAP connections |
+| `WithHTTPClient(hc)` | `*http.Client` | internal | Replace the underlying HTTP client for SOAP calls; overrides `WithTimeout` and `WithTLSConfig` |
+| `WithLogger(l)` | `*zap.Logger` | `zap.NewProduction()` | Structured logger |
 
-Performs a live SyncUpdates SOAP query and writes results to the catalog.
+Example with options:
 
-```
-winupdate fetch [flags]
+```go
+import (
+    "time"
+    "go.uber.org/zap"
 
-Flags:
-  --arch          amd64 | arm64 | x86          (default: amd64)
-  --ring          Retail | ReleasePreview | Beta | Dev | Canary  (default: Retail)
-  --flight        Active | Skip | Current       (default: Active)
-  --build         target build filter, e.g. "26100.8313" (empty = latest)
-  --check-build   OS version the WU client claims to be on.
-                  An old value causes WU to offer the current stable release
-                  as an upgrade. (default: 10.0.16251.0)
-  --sku           Windows SKU number (default 0 = Professional / SKU 48)
-  --db            SQLite database path (default: winupdate.db)
-```
+    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
+)
 
-Example — discover Windows 11 24H2 from Retail:
-
-```bash
-winupdate fetch --arch amd64 --ring Retail --check-build 10.0.16251.0
-```
-
-### `winupdate serve`
-
-Starts the mTLS-protected REST API server.
-
-```
-winupdate serve [flags]
-
-Flags:
-  --addr          listen address (default: :8443)
-  --db            SQLite database path (default: winupdate.db)
-  --cert          server TLS certificate file
-  --key           server TLS key file
-  --ca            CA certificate file for mTLS client verification
-  --watch-interval  background watcher poll interval (default: 30m)
-  --no-watcher    disable background Windows Update watcher
+logger, _ := zap.NewDevelopment()
+client, err := windowsuup.NewClient(
+    windowsuup.WithTimeout(60 * time.Second),
+    windowsuup.WithLogger(logger),
+)
 ```
 
-## REST API
+## Calling SDK Functions
 
-All `/v1/` routes require a valid client certificate when the server is started with `--cert`/`--ca`.
-`/healthz` and `/readyz` are accessible without a client certificate.
+### Fetch Builds
 
-| Method | Path | Description |
+`client.Builds.FetchBuilds` calls the SyncUpdates SOAP endpoint and returns all available builds matching the given filters.
+
+```go
+import (
+    buildsapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/builds"
+    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+)
+
+builds, _, err := client.Builds.FetchBuilds(ctx,
+    buildsapi.WithArch(constants.ArchAMD64),
+    buildsapi.WithRing(constants.RingRetail),
+    buildsapi.WithSKU(constants.SKUPro),
+)
+```
+
+`FetchOption` reference:
+
+| Option | Default | Description |
 |---|---|---|
-| `GET` | `/healthz` | Liveness probe |
-| `GET` | `/readyz` | Readiness probe |
-| `GET` | `/v1/builds` | List builds (filterable, paginated) |
-| `GET` | `/v1/builds/:uuid` | Get a single build |
-| `GET` | `/v1/builds/:uuid/files` | List files; add `?with_urls=true&revision=N` for CDN URLs |
-| `GET` | `/v1/builds/:uuid/files/:name/download` | Stream file from Microsoft CDN |
-| `GET` | `/v1/builds/:uuid/diff/:target` | Diff two builds' file sets |
-| `POST` | `/v1/updates/fetch` | Trigger a live SyncUpdates query |
-| `GET` | `/v1/feed` | Server-Sent Events change feed |
+| `WithArch(arch)` | `ArchAMD64` | Target CPU architecture |
+| `WithRing(ring)` | `RingRetail` | Windows Update release channel |
+| `WithSKU(sku)` | `SKUPro` | Windows edition SKU |
+| `WithFlight(flight)` | `"Active"` | Update flight sub-channel |
+| `WithCheckBuild(build)` | `""` (SDK default) | OS version the client claims to run; an old value causes WU to offer the current release as an upgrade |
+| `WithBuild(build)` | `""` | Filter to a specific build version string, e.g. `"26100.4061"` |
 
-### Fetch a build (HTTP API)
+Each `models.Build` in the result includes `UUID`, `Revision`, `Title`, `Build` (version string), `Arch`, `Ring`, `IsStable`, and `IsInsider`.
 
-```bash
-curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
-     -X POST https://localhost:8443/v1/updates/fetch \
-     -H 'Content-Type: application/json' \
-     -d '{"arch":"amd64","ring":"Retail","check_build":"10.0.16251.0"}'
+### Get Files
+
+`client.Files.GetFiles` retrieves the file list for a build. Without `WithCDNURLs`, it returns file metadata only (SHA1, SHA256, size). With `WithCDNURLs`, it calls GetExtendedUpdateInfo2 to resolve pre-signed Microsoft CDN download URLs that expire approximately 12 minutes after resolution.
+
+```go
+import (
+    filesapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
+    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+)
+
+files, _, err := client.Files.GetFiles(ctx, build,
+    filesapi.WithCDNURLs(),
+    filesapi.WithLanguage("en-us"),
+    filesapi.WithEdition(constants.EditionProfessional),
+    filesapi.WithExtension(".esd"),
+)
 ```
 
-### Resolve CDN file URLs
+`FileOption` reference:
 
-```bash
-UUID=<build-uuid>
-REV=<revision>
+| Option | Description |
+|---|---|
+| `WithCDNURLs()` | Resolve live pre-signed CDN download URLs (expire ~12 min) |
+| `WithLanguage(lang)` | Filter by BCP-47 language tag, e.g. `"en-us"`. Neutral files are always included. |
+| `WithEdition(ed)` | Filter by Windows edition using filename substring matching |
+| `WithExtension(ext)` | Filter by file extension, e.g. `".esd"` or `".cab"` |
 
-curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
-     "https://localhost:8443/v1/builds/$UUID/files?with_urls=true&revision=$REV" \
-     | jq '.data[] | {name, size_bytes, url}'
+Each `models.File` in the result includes `Name`, `SizeBytes`, `SHA1`, `SHA256`, `FileType`, and — when `WithCDNURLs` is set — `URL` and `ExpiresAt`.
+
+### Download Files
+
+`client.Download.DownloadFile` streams a single file from its CDN URL to a destination directory. `client.Download.DownloadFiles` downloads multiple files concurrently. Files are written atomically (temp file → rename); files already present at the correct size are skipped.
+
+Both methods require files with a populated `URL` field — call `GetFiles` with `WithCDNURLs()` first.
+
+```go
+// Single file
+resp, err := client.Download.DownloadFile(ctx, files[0], "./downloads")
+
+// Multiple files — concurrency=0 defaults to 4 parallel downloads
+err := client.Download.DownloadFiles(ctx, files, "./downloads", 4)
 ```
 
-### Download a file directly from Microsoft CDN
+### Diff Builds
 
-```bash
-CDN_URL=$(curl --cert certs/client.crt ... \
-    "https://localhost:8443/v1/builds/$UUID/files?with_urls=true&revision=$REV" \
-    | jq -r '.data[0].url')
+`client.Diff.Diff` compares the file sets of two builds client-side. It fetches file metadata for both builds (no CDN URLs) and compares by SHA256, falling back to SHA1, then size. The result reports files added, removed, changed, and unchanged.
 
-curl -o windows11.esd "$CDN_URL"
+```go
+d, _, err := client.Diff.Diff(ctx, buildA, buildB)
+fmt.Printf("+%d -%d ~%d =%d\n",
+    len(d.Added), len(d.Removed), len(d.Changed), d.Unchanged)
 ```
 
-Or via the REST API (server proxies the stream):
+`models.BuildDiff` fields:
 
-```bash
-curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
-     -o windows11.esd \
-     "https://localhost:8443/v1/builds/$UUID/files/windows11.esd/download?revision=$REV"
-```
+| Field | Type | Description |
+|---|---|---|
+| `BaseUUID` / `TargetUUID` | `string` | Build UUIDs being compared |
+| `BaseBuild` / `TargetBuild` | `string` | Build version strings |
+| `Added` | `[]models.File` | Files present in target but not in base |
+| `Removed` | `[]models.File` | Files present in base but not in target |
+| `Changed` | `[]models.FileDiff` | Files present in both but with differing content |
+| `Unchanged` | `int` | Count of files identical in both builds |
 
-## ISO assembly
+## Constants Reference
 
-Once ESD/CAB files are downloaded they can be assembled into a bootable ISO on Linux or macOS
-using standard open-source tools:
+All constants live in `github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants`.
+
+### Architectures
+
+| Constant | Value |
+|---|---|
+| `ArchAMD64` | `"amd64"` |
+| `ArchX86` | `"x86"` |
+| `ArchARM64` | `"arm64"` |
+
+### Rings
+
+| Constant | Channel |
+|---|---|
+| `RingRetail` | Stable / generally available |
+| `RingReleasePreview` | Release Preview Insider |
+| `RingBeta` | Beta Insider |
+| `RingExperimental` | Dev Insider |
+| `RingCanary` | Canary Insider (fastest-moving) |
+| `RingMSIT` | Microsoft internal |
+
+`RingDev` is a deprecated alias for `RingExperimental`.
+
+### SKUs
+
+| Constant | Name | ID |
+|---|---|---|
+| `SKUPro` | Professional | 48 |
+| `SKUHome` | Home | 1 |
+| `SKUHomeN` | Home N | 2 |
+| `SKUEnterprise` | Enterprise | 4 |
+| `SKUEducation` | Education | 121 |
+| `SKUProWorkstation` | Pro for Workstations | 161 |
+| `SKUIoTEnterprise` | IoT Enterprise | 188 |
+| `SKUServerStandard` | Server Standard | 7 |
+| `SKUServerDatacenter` | Server Datacenter | 8 |
+
+### Editions
+
+Used with `filesapi.WithEdition(ed)` to filter files by Windows edition.
+
+| Constant | Edition |
+|---|---|
+| `EditionHome` | Home (CORE) |
+| `EditionHomeN` | Home N |
+| `EditionProfessional` | Professional |
+| `EditionProfessionalN` | Professional N |
+| `EditionEnterprise` | Enterprise |
+| `EditionEnterpriseN` | Enterprise N |
+| `EditionEducation` | Education |
+| `EditionEducationN` | Education N |
+| `EditionProWorkstation` | Pro for Workstations |
+| `EditionServerStandard` | Server Standard |
+| `EditionServerDatacenter` | Server Datacenter |
+
+## ISO Assembly
+
+Once ESD/CAB files are downloaded they can be assembled into a bootable ISO on Linux or macOS using standard open-source tools:
 
 ```bash
 # Install prerequisites (Debian/Ubuntu)
@@ -187,36 +239,22 @@ brew tap sidneys/homebrew
 brew install cabextract wimlib cdrtools sidneys/homebrew/chntpw
 ```
 
-UUP dump's converter scripts (`uup_download_linux.sh`, `uup_download_macos.sh`) use these
-tools to turn the downloaded ESD/CAB set into a bootable ISO.
+UUP dump's converter scripts (`uup_download_linux.sh`, `uup_download_macos.sh`) use these tools to turn the downloaded ESD/CAB set into a bootable ISO.
 
-## TLS certificates (development)
-
-```bash
-# Generate self-signed CA + server + client certs in ./certs/
-./scripts/gen-certs.sh
-
-# Call the API with mTLS
-curl --cert certs/client.crt --key certs/client.key --cacert certs/ca.crt \
-     https://localhost:8443/v1/builds
-```
-
-## Packages
+## Package Layout
 
 | Package | Description |
 |---|---|
-| `wuproto` | Interface and domain types for the WU SOAP protocol |
-| `wuproto/soap` | SOAP client: GetCookie → SyncUpdates → GetExtendedUpdateInfo2 |
-| `catalog` | Domain types and Store/EventEmitter interfaces |
-| `catalog/store` | SQLite implementation of catalog.Store |
-| `catalog/watcher` | Background poller that keeps the catalog current |
-| `catalog/events` | In-process event bus for build lifecycle events |
-| `winupdate` | Service layer orchestrating SOAP + catalog |
-| `api` | HTTP server setup and routing |
-| `api/handlers` | Per-resource HTTP handlers |
-| `api/middleware` | mTLS enforcement, logging, recovery |
-| `sdk` | Thin Go client for the REST API |
-| `cmd/winupdate` | CLI binary |
+| `windowsuup` | Entry point — `Client`, `NewClient`, `ClientOption` |
+| `windowsuup/api/builds` | `FetchBuilds` — build discovery via SyncUpdates SOAP |
+| `windowsuup/api/files` | `GetFiles` — file metadata and CDN URL resolution via GetExtendedUpdateInfo2 |
+| `windowsuup/api/download` | `DownloadFile` / `DownloadFiles` — streaming CDN downloads |
+| `windowsuup/api/diff` | `Diff` — client-side file-set comparison |
+| `windowsuup/constants` | `Arch`, `Ring`, `SKU`, `Edition` constants |
+| `windowsuup/shared/models` | `Build`, `File`, `BuildDiff`, `FileDiff` types |
+| `windowsuup/client` | Transport interface and concrete `Transport` implementation |
+| `internal/wuproto` | Windows Update SOAP protocol types (internal) |
+| `internal/wuproto/soap` | SOAP client: GetCookie → SyncUpdates → GetExtendedUpdateInfo2 |
 
 ## Contributing
 
@@ -233,5 +271,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
-This project is an independent implementation. It is not affiliated with, endorsed by, or
-supported by Microsoft. Use in accordance with Microsoft's acceptable use policies.
+This project is an independent implementation. It is not affiliated with, endorsed by, or supported by Microsoft. Use in accordance with Microsoft's acceptable use policies.

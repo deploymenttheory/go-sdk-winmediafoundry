@@ -3,7 +3,7 @@
      - UpdateInfo#123456789: IsLeaf=true, should be included (has UpdateIdentity + ApplicabilityRules)
      - UpdateInfo#987654321: IsLeaf=false, should be excluded
      - ExtendedUpdateInfo carries title + file metadata for ID 123456789 (two Update entries, same ID).
-     - Windows11.0-26120.4061-amd64-EXPRESS.cab should be filtered by shouldExclude.
+     - Windows11.0-KB26120406-x64-EXPRESS.cab should be filtered by shouldExclude.
 -->
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
   <s:Body>
@@ -31,7 +31,7 @@
             <!-- ExtendedProperties+Files entry for ID 123456789 (same ID, second occurrence) -->
             <Update>
               <ID>123456789</ID>
-              <Xml>&lt;ExtendedProperties ProductName="Client.OS.amd64" ReleaseVersion="10.0.26120.4061" Handler="http://schemas.microsoft.com/msus/2016/01/UpdateHandlers/OSInstaller" MaxDownloadSize="4294967296" MinDownloadSize="0" DefaultPropertiesLanguage="en" ContentType="ProductRelease" BrowseOnly="false"&gt;&lt;Files&gt;&lt;File FileName="Windows11.0-26120.4061-amd64.esd" Digest="ABCDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" Size="4294967296" Modified="2024-11-01T00:00:00Z"&gt;&lt;AdditionalDigest Algorithm="SHA256"&gt;ABCDEFGHIJKLMNOPQRSTUVWXYZ012345678901234567ABCDE=&lt;/AdditionalDigest&gt;&lt;/File&gt;&lt;File FileName="Windows11.0-26120.4061-amd64-EXPRESS.cab" Digest="ZZZDEFGHIJKLMNOPQRSTUVWXYZabcde==" DigestAlgorithm="SHA1" Size="12345"&gt;&lt;/File&gt;&lt;/Files&gt;&lt;/ExtendedProperties&gt;</Xml>
+              <Xml>&lt;ExtendedProperties ProductName="Client.OS.amd64" ReleaseVersion="10.0.26120.4061" Handler="http://schemas.microsoft.com/msus/2016/01/UpdateHandlers/OSInstaller" MaxDownloadSize="4294967296" MinDownloadSize="0" DefaultPropertiesLanguage="en" ContentType="ProductRelease" BrowseOnly="false"&gt;&lt;Files&gt;&lt;File FileName="Windows11.0-26120.4061-amd64.esd" Digest="AAAAAAAAAAAAAAAAAAAAAAAAAAA=" DigestAlgorithm="SHA1" Size="4294967296" Modified="2024-11-01T00:00:00Z"&gt;&lt;AdditionalDigest Algorithm="SHA256"&gt;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&lt;/AdditionalDigest&gt;&lt;/File&gt;&lt;File FileName="Windows11.0-KB26120406-x64-EXPRESS.cab" Digest="AAAAAAAAAAAAAAAAAAAAAAAAAAA=" DigestAlgorithm="SHA1" Size="12345"&gt;&lt;/File&gt;&lt;/Files&gt;&lt;/ExtendedProperties&gt;</Xml>
             </Update>
           </Updates>
         </ExtendedUpdateInfo>

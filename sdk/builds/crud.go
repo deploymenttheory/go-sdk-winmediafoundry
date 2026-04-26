@@ -1,4 +1,5 @@
-package sdk
+// Package builds provides methods for the /v1/builds API endpoints.
+package builds
 
 import (
 	"context"
@@ -6,31 +7,23 @@ import (
 	"net/http"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/constants"
 	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 )
 
-// BuildsService provides methods for the /v1/builds endpoints.
-type BuildsService struct {
+// Builds provides methods for the /v1/builds endpoints.
+type Builds struct {
 	t *transport.Transport
 }
 
-// listBuildsResponse is the JSON response shape for GET /v1/builds.
-type listBuildsResponse struct {
-	Data []catalog.Build `json:"data"`
-	Meta struct {
-		Total  int64 `json:"total"`
-		Limit  int   `json:"limit"`
-		Offset int   `json:"offset"`
-	} `json:"meta"`
-}
-
-type getBuildResponse struct {
-	Data catalog.Build `json:"data"`
+// New returns a new Builds service backed by the given transport.
+func New(t *transport.Transport) *Builds {
+	return &Builds{t: t}
 }
 
 // List retrieves builds from the catalog with optional filtering and pagination.
-func (s *BuildsService) List(ctx context.Context, q catalog.BuildQuery) ([]catalog.Build, int64, error) {
-	req := s.t.Request(ctx).
+func (b *Builds) List(ctx context.Context, q catalog.BuildQuery) ([]catalog.Build, int64, error) {
+	req := b.t.Request(ctx).
 		SetQueryParam("search", q.Search).
 		SetQueryParam("arch", q.Arch).
 		SetQueryParam("ring", q.Ring).
@@ -43,9 +36,12 @@ func (s *BuildsService) List(ctx context.Context, q catalog.BuildQuery) ([]catal
 	if q.OrderBy != "" {
 		req = req.SetQueryParam("order", q.OrderBy)
 	}
+	if q.Desc {
+		req = req.SetQueryParam("desc", "true")
+	}
 
-	req = req.SetResult(&listBuildsResponse{})
-	resp, err := req.Get("/v1/builds")
+	req = req.SetResult(&listResponse{})
+	resp, err := req.Get(constants.EndpointBuilds)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -53,14 +49,14 @@ func (s *BuildsService) List(ctx context.Context, q catalog.BuildQuery) ([]catal
 		return nil, 0, fmt.Errorf("builds list: HTTP %d", resp.StatusCode())
 	}
 
-	result := resp.Result().(*listBuildsResponse)
+	result := resp.Result().(*listResponse)
 	return result.Data, result.Meta.Total, nil
 }
 
-// Get retrieves a single build by UUID.
-func (s *BuildsService) Get(ctx context.Context, uuid string) (*catalog.Build, error) {
-	var result getBuildResponse
-	resp, err := s.t.Request(ctx).SetResult(&result).Get("/v1/builds/" + uuid)
+// GetByID retrieves a single build by UUID.
+func (b *Builds) GetByID(ctx context.Context, uuid string) (*catalog.Build, error) {
+	var result getResponse
+	resp, err := b.t.Request(ctx).SetResult(&result).Get(constants.EndpointBuilds + "/" + uuid)
 	if err != nil {
 		return nil, err
 	}

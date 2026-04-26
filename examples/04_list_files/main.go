@@ -8,22 +8,17 @@
 // Filter by extension with --ext to narrow the list (e.g. --ext .esd shows
 // only Windows installation images).
 //
-// Usage (plain HTTP):
+// Usage:
 //
 //	go run ./examples/04_list_files \
-//	  --server http://localhost:8080 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289
 //
 //	go run ./examples/04_list_files \
-//	  --server http://localhost:8080 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --ext .esd
 //
-// Usage (mTLS):
-//
 //	go run ./examples/04_list_files \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt \
+//	  --server https://wuapi.example.internal:8443 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289
 package main
 
@@ -39,10 +34,7 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	uuid := flag.String("uuid", "", "build UUID (required)")
 	ext := flag.String("ext", "", "filter by file extension, e.g. .esd or .cab")
 	flag.Parse()
@@ -53,7 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -61,7 +53,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	q := client.Files.QueryFiles(*uuid)
+	q := client.Files.Query(*uuid)
 	if *ext != "" {
 		q = q.ByExtension(*ext)
 	}
@@ -114,16 +106,10 @@ func formatBytes(b int64) string {
 	}
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
-		sdk.WithTimeout(30 * time.Second),
+		sdk.WithTimeout(30*time.Second),
 		sdk.WithRetryCount(2),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

@@ -10,17 +10,13 @@
 // returning a leaf update with a proper UpdateID that can be resolved to CDN
 // file URLs via GetExtendedUpdateInfo2.
 //
-// Usage (plain HTTP):
+// Usage:
 //
 //	go run ./examples/01_fetch_updates \
-//	  --server http://localhost:8080 \
 //	  --arch amd64 --ring Retail --check-build 10.0.16251.0
 //
-// Usage (mTLS):
-//
 //	go run ./examples/01_fetch_updates \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt \
+//	  --server https://wuapi.example.internal:8443 \
 //	  --arch amd64 --ring Retail --check-build 10.0.16251.0
 package main
 
@@ -34,20 +30,18 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/sdk"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/updates"
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	arch := flag.String("arch", "amd64", "architecture: amd64, arm64, x86")
 	ring := flag.String("ring", "Retail", "ring: Retail, ReleasePreview, Beta, Dev, Canary")
 	checkBuild := flag.String("check-build", "10.0.16251.0",
 		"OS version the WU client claims to be on; an old build causes WU to offer the current stable release as an upgrade")
 	flag.Parse()
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -57,7 +51,7 @@ func main() {
 
 	fmt.Printf("Querying Windows Update: arch=%s ring=%s check-build=%s\n", *arch, *ring, *checkBuild)
 
-	result, err := client.Updates.Fetch(ctx, sdk.FetchRequest{
+	result, err := client.Updates.Fetch(ctx, updates.Request{
 		Arch:       *arch,
 		Ring:       *ring,
 		Flight:     "Active",
@@ -102,16 +96,10 @@ func main() {
 	}
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
-		sdk.WithTimeout(3 * time.Minute),
+		sdk.WithTimeout(3*time.Minute),
 		sdk.WithRetryCount(2),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

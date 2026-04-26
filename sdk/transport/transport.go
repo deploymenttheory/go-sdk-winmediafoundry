@@ -55,6 +55,9 @@ func New(cfg *Settings, logger *zap.Logger) (*Transport, error) {
 	if cfg.ProxyURL != "" {
 		client.SetProxy(cfg.ProxyURL)
 	}
+	if cfg.Debug {
+		client.SetDebug(true)
+	}
 
 	var sem chan struct{}
 	if cfg.MaxConcurrentRequests > 0 {

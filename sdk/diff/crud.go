@@ -1,4 +1,5 @@
-package sdk
+// Package diff provides methods for the /v1/diff API endpoint.
+package diff
 
 import (
 	"context"
@@ -6,26 +7,28 @@ import (
 	"net/http"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/constants"
 	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 )
 
-// DiffService provides the GET /v1/diff endpoint.
-type DiffService struct {
+// Diff provides methods for the /v1/diff endpoint.
+type Diff struct {
 	t *transport.Transport
 }
 
-type diffResponse struct {
-	Data catalog.BuildDiff `json:"data"`
+// New returns a new Diff service backed by the given transport.
+func New(t *transport.Transport) *Diff {
+	return &Diff{t: t}
 }
 
 // Compare returns the file-level diff between two builds identified by UUID.
-func (s *DiffService) Compare(ctx context.Context, baseUUID, targetUUID string) (*catalog.BuildDiff, error) {
+func (d *Diff) Compare(ctx context.Context, baseUUID, targetUUID string) (*catalog.BuildDiff, error) {
 	var result diffResponse
-	resp, err := s.t.Request(ctx).
+	resp, err := d.t.Request(ctx).
 		SetQueryParam("base", baseUUID).
 		SetQueryParam("target", targetUUID).
 		SetResult(&result).
-		Get("/v1/diff")
+		Get(constants.EndpointDiff)
 	if err != nil {
 		return nil, err
 	}

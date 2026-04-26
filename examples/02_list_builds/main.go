@@ -4,17 +4,14 @@
 // ring, text search, and stable-only. Results are sorted by discovery time
 // (newest first) and displayed as a formatted table with totals.
 //
-// Usage (plain HTTP):
+// Usage:
 //
-//	go run ./examples/02_list_builds --server http://localhost:8080
-//	go run ./examples/02_list_builds --server http://localhost:8080 --arch amd64 --ring Retail
-//	go run ./examples/02_list_builds --server http://localhost:8080 --search "24H2" --stable
-//
-// Usage (mTLS):
+//	go run ./examples/02_list_builds
+//	go run ./examples/02_list_builds --arch amd64 --ring Retail
+//	go run ./examples/02_list_builds --search "24H2" --stable
 //
 //	go run ./examples/02_list_builds \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt
+//	  --server https://wuapi.example.internal:8443
 package main
 
 import (
@@ -29,10 +26,7 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	search := flag.String("search", "", "substring filter on build title or number")
 	arch := flag.String("arch", "", "filter by architecture: amd64, arm64, x86")
 	ring := flag.String("ring", "", "filter by ring: Retail, ReleasePreview, Beta, Dev, Canary")
@@ -41,7 +35,7 @@ func main() {
 	offset := flag.Int("offset", 0, "pagination offset")
 	flag.Parse()
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -93,16 +87,10 @@ func main() {
 	}
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
-		sdk.WithTimeout(30 * time.Second),
+		sdk.WithTimeout(30*time.Second),
 		sdk.WithRetryCount(2),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

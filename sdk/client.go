@@ -13,7 +13,12 @@
 package sdk
 
 import (
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/builds"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/diff"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/feed"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/files"
 	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/updates"
 	"go.uber.org/zap"
 )
 
@@ -23,11 +28,11 @@ type Client struct {
 	t      *transport.Transport
 	logger *zap.Logger
 
-	Builds  *BuildsService
-	Files   *FilesService
-	Updates *UpdatesService
-	Diff    *DiffService
-	Feed    *FeedService
+	Builds  *builds.Builds
+	Files   *files.Files
+	Updates *updates.Updates
+	Diff    *diff.Diff
+	Feed    *feed.Feed
 }
 
 // NewClient creates a Client with the given options applied to the default settings.
@@ -47,11 +52,13 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		return nil, err
 	}
 
-	c := &Client{t: t, logger: logger}
-	c.Builds = &BuildsService{t: t}
-	c.Files = &FilesService{t: t}
-	c.Updates = &UpdatesService{t: t}
-	c.Diff = &DiffService{t: t}
-	c.Feed = &FeedService{t: t}
-	return c, nil
+	return &Client{
+		t:       t,
+		logger:  logger,
+		Builds:  builds.New(t),
+		Files:   files.New(t),
+		Updates: updates.New(t),
+		Diff:    diff.New(t),
+		Feed:    feed.New(t),
+	}, nil
 }

@@ -105,5 +105,5 @@ func WithLogger(logger *zap.Logger) ClientOption {
 
 // WithDebug enables verbose request/response logging in resty.
 func WithDebug() ClientOption {
-	return func(s *transport.Settings) { s.UserAgent = s.UserAgent } // marker; applied in NewClient
+	return func(s *transport.Settings) { s.Debug = true }
 }

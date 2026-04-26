@@ -1,58 +1,23 @@
-package sdk
+package files
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 )
 
-// FilesService provides methods for the /v1/builds/{uuid}/files endpoints.
-type FilesService struct {
-	t *transport.Transport
-}
-
-type listFilesResponse struct {
-	Data []winupdate.FileResult `json:"data"`
-}
-
-// List retrieves file metadata for a build. Set withURLs=true to resolve
-// live CDN download URLs (requires revision to be set).
-func (s *FilesService) List(ctx context.Context, uuid string, withURLs bool, revision int) ([]winupdate.FileResult, error) {
-	req := s.t.Request(ctx).SetResult(&listFilesResponse{})
-	if withURLs {
-		req = req.
-			SetQueryParam("with_urls", "true").
-			SetQueryParam("revision", fmt.Sprintf("%d", revision))
-	}
-
-	resp, err := req.Get("/v1/builds/" + uuid + "/files")
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("files list: HTTP %d", resp.StatusCode())
-	}
-	return resp.Result().(*listFilesResponse).Data, nil
-}
-
 // FileQuery is a fluent builder for filtering file results client-side.
+// Construct one via Files.Query(uuid) and chain filter methods before
+// calling Execute.
 type FileQuery struct {
-	svc      *FilesService
+	svc      *Files
 	uuid     string
 	withURLs bool
 	revision int
 	filters  []func(winupdate.FileResult) bool
 }
 
-// QueryFiles returns a FileQuery builder for the given build UUID.
-func (s *FilesService) QueryFiles(uuid string) *FileQuery {
-	return &FileQuery{svc: s, uuid: uuid}
-}
-
-// WithURLs enables live CDN URL resolution.
+// WithURLs enables live CDN URL resolution for the given revision number.
 func (q *FileQuery) WithURLs(revision int) *FileQuery {
 	q.withURLs = true
 	q.revision = revision
@@ -95,13 +60,14 @@ func (q *FileQuery) SmallerThan(maxBytes int64) *FileQuery {
 	return q
 }
 
-// Where applies a custom predicate.
+// Where applies a custom predicate filter.
 func (q *FileQuery) Where(fn func(f winupdate.FileResult) bool) *FileQuery {
 	q.filters = append(q.filters, fn)
 	return q
 }
 
-// Execute fetches files and applies all registered filters.
+// Execute fetches files and applies all registered filters, returning only
+// files that pass every filter.
 func (q *FileQuery) Execute(ctx context.Context) ([]winupdate.FileResult, error) {
 	files, err := q.svc.List(ctx, q.uuid, q.withURLs, q.revision)
 	if err != nil {

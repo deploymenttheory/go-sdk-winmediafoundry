@@ -11,20 +11,16 @@
 // Note: this example makes a raw HTTP request (not a named SDK method) because
 // the download endpoint returns a binary body stream.
 //
-// Usage (plain HTTP):
+// Usage:
 //
 //	go run ./examples/06_download_file \
-//	  --server http://localhost:8080 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --revision 1 \
 //	  --file Windows11.0-KB5058411-x64.cab \
 //	  --out /tmp/Windows11.0-KB5058411-x64.cab
 //
-// Usage (mTLS):
-//
 //	go run ./examples/06_download_file \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt \
+//	  --server https://wuapi.example.internal:8443 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --revision 1 \
 //	  --file Windows11.0-KB5058411-x64.cab \
@@ -47,11 +43,15 @@ import (
 	"time"
 )
 
+// devCertPaths mirrors the well-known paths from scripts/gen-certs.sh.
+const (
+	devCertFile = "certs/client.crt"
+	devKeyFile  = "certs/client.key"
+	devCAFile   = "certs/ca.crt"
+)
+
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	uuid := flag.String("uuid", "", "build UUID (required)")
 	revision := flag.Int("revision", 0, "build revision number (required)")
 	file := flag.String("file", "", "filename to download (required; from 04_list_files output)")
@@ -64,7 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	httpClient, err := buildHTTPClient(*cert, *key, *ca)
+	httpClient, err := buildHTTPClient()
 	if err != nil {
 		log.Fatalf("build HTTP client: %v", err)
 	}
@@ -145,18 +145,21 @@ func (p *progressWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func buildHTTPClient(cert, key, ca string) (*http.Client, error) {
+// buildHTTPClient returns an *http.Client configured with the dev mTLS
+// certificates from ./certs/ if they exist, or plain TLS otherwise.
+func buildHTTPClient() (*http.Client, error) {
 	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
 
-	if cert != "" {
-		pair, err := tls.LoadX509KeyPair(cert, key)
+	if fileExists(devCertFile) && fileExists(devKeyFile) {
+		pair, err := tls.LoadX509KeyPair(devCertFile, devKeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("load client cert: %w", err)
 		}
 		tlsCfg.Certificates = []tls.Certificate{pair}
 	}
-	if ca != "" {
-		pem, err := os.ReadFile(ca)
+
+	if fileExists(devCAFile) {
+		pem, err := os.ReadFile(devCAFile)
 		if err != nil {
 			return nil, fmt.Errorf("read CA cert: %w", err)
 		}
@@ -165,14 +168,17 @@ func buildHTTPClient(cert, key, ca string) (*http.Client, error) {
 			return nil, fmt.Errorf("parse CA cert")
 		}
 		tlsCfg.RootCAs = pool
-	} else {
-		tlsCfg.InsecureSkipVerify = true //nolint:gosec // dev/plain HTTP mode
 	}
 
 	return &http.Client{
 		Transport: &http.Transport{TLSClientConfig: tlsCfg},
 		Timeout:   0, // no timeout — file may be several GiB
 	}, nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func formatBytes(b int64) string {

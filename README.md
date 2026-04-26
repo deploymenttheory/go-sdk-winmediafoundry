@@ -1,14 +1,13 @@
-# go-sdk-uupdump
+# go-sdk-windowsuup
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-uupdump)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-uupdump)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-windowsuup)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-windowsuup)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-uupdump)](https://github.com/deploymenttheory/go-sdk-uupdump)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-windowsuup)](https://github.com/deploymenttheory/go-sdk-windowsuup)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
-A native Go implementation of the Windows Unified Update (SOAP) protocol. Queries Microsoft's
-`fe3.delivery.mp.microsoft.com` update endpoints directly — no intermediary service
-required — to discover Windows builds, resolve CDN download URLs, and stream ESD/CAB
-files from `tlu.dl.delivery.mp.microsoft.com`.
+A native Go implementation of the Windows Unified Update (SOAP) protocol. Queries Microsoft's `fe3.delivery.mp.microsoft.com` update endpoints directly — no intermediary service required — to discover Windows builds, resolve CDN download URLs, and stream ESD/CAB files from `tlu.dl.delivery.mp.microsoft.com`.
+
+[Windows Update overview](https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-overview)
 
 ## What it does
 

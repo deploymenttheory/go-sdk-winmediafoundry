@@ -8,24 +8,19 @@
 // The --revision flag must match the build's revision number (from 03_get_build
 // or 02_list_builds). Without the correct revision EUI2 will return no URLs.
 //
-// Usage (plain HTTP):
+// Usage:
 //
 //	go run ./examples/05_resolve_cdn_urls \
-//	  --server http://localhost:8080 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --revision 1
 //
 //	# ESD files only:
 //	go run ./examples/05_resolve_cdn_urls \
-//	  --server http://localhost:8080 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --revision 1 --ext .esd
 //
-// Usage (mTLS):
-//
 //	go run ./examples/05_resolve_cdn_urls \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt \
+//	  --server https://wuapi.example.internal:8443 \
 //	  --uuid 038c7416-2aa2-4174-85a2-158aa9b11289 \
 //	  --revision 1
 package main
@@ -42,10 +37,7 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	uuid := flag.String("uuid", "", "build UUID (required)")
 	revision := flag.Int("revision", 0, "build revision number (required; from 03_get_build output)")
 	ext := flag.String("ext", "", "filter by file extension, e.g. .esd or .cab")
@@ -57,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -68,7 +60,7 @@ func main() {
 
 	fmt.Printf("Resolving CDN URLs for build %s (revision %d)...\n\n", *uuid, *revision)
 
-	q := client.Files.QueryFiles(*uuid).WithURLs(*revision)
+	q := client.Files.Query(*uuid).WithURLs(*revision)
 	if *ext != "" {
 		q = q.ByExtension(*ext)
 	}
@@ -132,16 +124,10 @@ func formatBytes(b int64) string {
 	}
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
-		sdk.WithTimeout(2 * time.Minute),
+		sdk.WithTimeout(2*time.Minute),
 		sdk.WithRetryCount(2),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

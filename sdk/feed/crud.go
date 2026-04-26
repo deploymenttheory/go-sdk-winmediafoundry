@@ -1,4 +1,5 @@
-package sdk
+// Package feed provides methods for the /v1/feed API endpoints.
+package feed
 
 import (
 	"bufio"
@@ -9,26 +10,23 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/constants"
 	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 )
 
-// FeedService provides methods for the /v1/feed endpoints.
-type FeedService struct {
+// Feed provides methods for the /v1/feed endpoints.
+type Feed struct {
 	t *transport.Transport
 }
 
-type listFeedResponse struct {
-	Data []catalog.FeedEntry `json:"data"`
-	Meta struct {
-		Total  int64 `json:"total"`
-		Limit  int   `json:"limit"`
-		Offset int   `json:"offset"`
-	} `json:"meta"`
+// New returns a new Feed service backed by the given transport.
+func New(t *transport.Transport) *Feed {
+	return &Feed{t: t}
 }
 
 // List returns paginated change-feed entries.
-func (s *FeedService) List(ctx context.Context, q catalog.FeedQuery) ([]catalog.FeedEntry, int64, error) {
-	req := s.t.Request(ctx).SetResult(&listFeedResponse{})
+func (f *Feed) List(ctx context.Context, q catalog.FeedQuery) ([]catalog.FeedEntry, int64, error) {
+	req := f.t.Request(ctx).SetResult(&listResponse{})
 
 	if !q.Since.IsZero() {
 		req = req.SetQueryParam("since", q.Since.UTC().Format(time.RFC3339))
@@ -43,31 +41,25 @@ func (s *FeedService) List(ctx context.Context, q catalog.FeedQuery) ([]catalog.
 		req = req.SetQueryParam("offset", fmt.Sprintf("%d", q.Offset))
 	}
 
-	resp, err := req.Get("/v1/feed")
+	resp, err := req.Get(constants.EndpointFeed)
 	if err != nil {
 		return nil, 0, err
 	}
 	if resp.StatusCode() != http.StatusOK {
 		return nil, 0, fmt.Errorf("feed list: HTTP %d", resp.StatusCode())
 	}
-	result := resp.Result().(*listFeedResponse)
+	result := resp.Result().(*listResponse)
 	return result.Data, result.Meta.Total, nil
-}
-
-// SSEEvent is a single Server-Sent Event received from the live feed stream.
-type SSEEvent struct {
-	Event string
-	Data  string
 }
 
 // Stream connects to the SSE feed stream and sends events to the returned
 // channel until ctx is cancelled or the connection drops.
 // The caller is responsible for draining the channel.
-func (s *FeedService) Stream(ctx context.Context) (<-chan SSEEvent, error) {
-	resp, err := s.t.Request(ctx).
-		SetHeader("Accept", "text/event-stream").
+func (f *Feed) Stream(ctx context.Context) (<-chan Event, error) {
+	resp, err := f.t.Request(ctx).
+		SetHeader("Accept", constants.ContentTypeSSE).
 		SetDoNotParseResponse(true).
-		Get("/v1/feed/stream")
+		Get(constants.EndpointFeedStream)
 	if err != nil {
 		return nil, err
 	}
@@ -76,13 +68,13 @@ func (s *FeedService) Stream(ctx context.Context) (<-chan SSEEvent, error) {
 		return nil, fmt.Errorf("feed stream: HTTP %d", resp.StatusCode())
 	}
 
-	ch := make(chan SSEEvent, 64)
+	ch := make(chan Event, 64)
 	go func() {
 		defer close(ch)
 		defer resp.RawResponse.Body.Close()
 
 		scanner := bufio.NewScanner(resp.RawResponse.Body)
-		var ev SSEEvent
+		var ev Event
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
@@ -99,13 +91,13 @@ func (s *FeedService) Stream(ctx context.Context) (<-chan SSEEvent, error) {
 						return
 					}
 				}
-				ev = SSEEvent{}
+				ev = Event{}
 				continue
 			}
-			if strings.HasPrefix(line, "event:") {
-				ev.Event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
-			} else if strings.HasPrefix(line, "data:") {
-				ev.Data = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if v, ok := strings.CutPrefix(line, "event:"); ok {
+				ev.Event = strings.TrimSpace(v)
+			} else if v, ok := strings.CutPrefix(line, "data:"); ok {
+				ev.Data = strings.TrimSpace(v)
 			}
 		}
 	}()

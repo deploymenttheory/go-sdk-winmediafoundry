@@ -11,12 +11,14 @@
 //
 // Usage:
 //
-//	go run ./examples/10_health_check --server http://localhost:8080
-//	go run ./examples/10_health_check --server https://localhost:8443
+//	go run ./examples/10_health_check
+//	go run ./examples/10_health_check --server https://wuapi.example.internal:8443
 package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -26,12 +28,18 @@ import (
 	"time"
 )
 
+const devCAFile = "certs/ca.crt"
+
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	flag.Parse()
 
-	// Health endpoints are unauthenticated — plain HTTP client is fine.
-	client := &http.Client{Timeout: 10 * time.Second}
+	client, err := buildHTTPClient()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "build HTTP client: %v\n", err)
+		os.Exit(1)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -77,4 +85,23 @@ func statusLine(r probeResult) string {
 		return fmt.Sprintf("OK    %d  %s", r.code, status)
 	}
 	return fmt.Sprintf("FAIL  %d  %v", r.code, r.body)
+}
+
+// buildHTTPClient returns an http.Client that trusts the dev CA if present.
+// Health endpoints don't require a client certificate, but TLS server
+// verification still requires the CA to be trusted.
+func buildHTTPClient() (*http.Client, error) {
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+
+	if pem, err := os.ReadFile(devCAFile); err == nil {
+		pool := x509.NewCertPool()
+		if pool.AppendCertsFromPEM(pem) {
+			tlsCfg.RootCAs = pool
+		}
+	}
+
+	return &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: &http.Transport{TLSClientConfig: tlsCfg},
+	}, nil
 }

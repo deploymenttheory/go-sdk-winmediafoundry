@@ -9,19 +9,14 @@
 //   - "build_discovered" — first time a build UUID was seen
 //   - "build_updated"    — a build's metadata was refreshed
 //
-// Usage (plain HTTP):
+// Usage:
 //
-//	go run ./examples/08_feed_history --server http://localhost:8080
-//	go run ./examples/08_feed_history --server http://localhost:8080 \
-//	  --event-type build_discovered --limit 50
-//	go run ./examples/08_feed_history --server http://localhost:8080 \
-//	  --since 2026-01-01T00:00:00Z
-//
-// Usage (mTLS):
+//	go run ./examples/08_feed_history
+//	go run ./examples/08_feed_history --event-type build_discovered --limit 50
+//	go run ./examples/08_feed_history --since 2026-01-01T00:00:00Z
 //
 //	go run ./examples/08_feed_history \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt
+//	  --server https://wuapi.example.internal:8443
 package main
 
 import (
@@ -36,17 +31,14 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	eventType := flag.String("event-type", "", "filter by event type: build_discovered, build_updated")
 	since := flag.String("since", "", "return events after this RFC3339 timestamp, e.g. 2026-01-01T00:00:00Z")
 	limit := flag.Int("limit", 20, "maximum number of entries to return")
 	offset := flag.Int("offset", 0, "pagination offset")
 	flag.Parse()
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -101,16 +93,10 @@ func main() {
 	}
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
-		sdk.WithTimeout(30 * time.Second),
+		sdk.WithTimeout(30*time.Second),
 		sdk.WithRetryCount(2),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

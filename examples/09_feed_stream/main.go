@@ -8,15 +8,12 @@
 // The program runs until interrupted (Ctrl-C / SIGTERM). The server sends a
 // keep-alive comment every 15 seconds so the connection does not time out.
 //
-// Usage (plain HTTP):
+// Usage:
 //
-//	go run ./examples/09_feed_stream --server http://localhost:8080
-//
-// Usage (mTLS):
+//	go run ./examples/09_feed_stream
 //
 //	go run ./examples/09_feed_stream \
-//	  --server https://localhost:8443 \
-//	  --cert certs/client.crt --key certs/client.key --ca certs/ca.crt
+//	  --server https://wuapi.example.internal:8443
 package main
 
 import (
@@ -35,13 +32,10 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "winupdate server base URL")
-	cert := flag.String("cert", "", "client certificate file (omit for plain HTTP)")
-	key := flag.String("key", "", "client private key file")
-	ca := flag.String("ca", "", "CA certificate file")
+	server := flag.String("server", "https://localhost:8443", "winupdate server base URL")
 	flag.Parse()
 
-	client, err := newClient(*server, *cert, *key, *ca)
+	client, err := newClient(*server)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -81,16 +75,10 @@ func main() {
 	fmt.Fprintln(os.Stderr, "Feed stream closed.")
 }
 
-func newClient(server, cert, key, ca string) (*sdk.Client, error) {
-	opts := []sdk.ClientOption{
+func newClient(server string) (*sdk.Client, error) {
+	return sdk.NewClient(
 		sdk.WithBaseURL(server),
 		sdk.WithTimeout(0), // no timeout — stream runs indefinitely
 		sdk.WithRetryCount(0),
-	}
-	if cert != "" {
-		opts = append(opts, sdk.WithMTLS(cert, key, ca))
-	} else {
-		opts = append(opts, sdk.WithInsecureSkipVerify())
-	}
-	return sdk.NewClient(opts...)
+	)
 }

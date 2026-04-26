@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 	"go.uber.org/zap"
 )
 

@@ -5,7 +5,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-uupdump)](https://github.com/deploymenttheory/go-sdk-uupdump)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
-A native Go implementation of the Windows Update SOAP protocol. Queries Microsoft's
+A native Go implementation of the Windows Unified Update (SOAP) protocol. Queries Microsoft's
 `fe3.delivery.mp.microsoft.com` update endpoints directly — no intermediary service
 required — to discover Windows builds, resolve CDN download URLs, and stream ESD/CAB
 files from `tlu.dl.delivery.mp.microsoft.com`.
@@ -66,7 +66,7 @@ curl --cacert certs/ca.crt https://localhost:8443/healthz
 ### As a CLI binary
 
 ```bash
-go install github.com/deploymenttheory/go-sdk-uupdump/cmd/winupdate@latest
+go install github.com/deploymenttheory/go-sdk-windowsuup/cmd/winupdate@latest
 
 # Discover current Windows 11 builds from Retail ring
 winupdate fetch --arch amd64 --ring Retail

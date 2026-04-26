@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/api/response"
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/response"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 )
 
 // FeedHandler handles the change-feed endpoints (paginated + SSE).

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
 	"go.uber.org/zap"
 )
 

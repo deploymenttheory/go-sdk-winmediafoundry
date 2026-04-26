@@ -3,5 +3,5 @@ package buildver
 
 // Version is injected by the build system via:
 //
-//	go build -ldflags "-X github.com/deploymenttheory/go-sdk-uupdump/internal/buildver.Version=1.2.3"
+//	go build -ldflags "-X github.com/deploymenttheory/go-sdk-windowsuup/internal/buildver.Version=1.2.3"
 var Version = "dev"

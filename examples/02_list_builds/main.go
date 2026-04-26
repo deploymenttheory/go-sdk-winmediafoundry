@@ -24,8 +24,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk"
 )
 
 func main() {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 )
 
 // File exclusion patterns (from UUP dump PHP source, get.php).

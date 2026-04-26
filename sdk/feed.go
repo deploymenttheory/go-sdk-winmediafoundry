@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 )
 
 // FeedService provides methods for the /v1/feed endpoints.

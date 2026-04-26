@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk/transport"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 )
 
 // UpdatesService provides the POST /v1/updates/fetch endpoint.

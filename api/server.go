@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/api/handlers"
-	"github.com/deploymenttheory/go-sdk-uupdump/api/middleware"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/handlers"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/middleware"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"

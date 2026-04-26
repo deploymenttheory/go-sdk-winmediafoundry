@@ -33,8 +33,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto/soap"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto/soap"
 	"go.uber.org/zap"
 )
 
@@ -205,7 +205,7 @@ func (t *curlTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		"--header", "Content-Type: " + req.Header.Get("Content-Type"),
 		"--header", "User-Agent: " + req.Header.Get("User-Agent"),
 		"--data-binary", "@" + reqFile,
-		"--output", respFile,          // response body → file
+		"--output", respFile, // response body → file
 		"--write-out", "%{http_code}", // HTTP status → stdout (captured)
 	}
 

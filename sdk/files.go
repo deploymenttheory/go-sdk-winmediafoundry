@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk/transport"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 )
 
 // FilesService provides methods for the /v1/builds/{uuid}/files endpoints.

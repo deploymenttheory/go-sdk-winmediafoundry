@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
 	_ "modernc.org/sqlite" // SQLite driver
 )
 

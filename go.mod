@@ -1,4 +1,4 @@
-module github.com/deploymenttheory/go-sdk-uupdump
+module github.com/deploymenttheory/go-sdk-windowsuup
 
 go 1.25.0
 

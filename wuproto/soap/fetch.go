@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 )
 
 // parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo

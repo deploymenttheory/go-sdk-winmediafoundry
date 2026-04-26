@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/api/response"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/response"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 )
 
 // DiffHandler handles build comparison requests.

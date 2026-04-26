@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 	"go.uber.org/zap"
 )
 

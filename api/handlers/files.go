@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/api/response"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/response"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
 	"github.com/go-chi/chi/v5"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog/store"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog/store"
 )
 
 // Err writes a structured error response.

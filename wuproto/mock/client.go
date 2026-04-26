@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 )
 
 // Client is a configurable mock implementation of wuproto.WindowsUpdateClient.
@@ -27,9 +27,9 @@ type Client struct {
 
 // Call records a single method invocation on the mock client.
 type Call struct {
-	Method      string
-	FetchReq    *wuproto.FetchRequest
-	FileURLReq  *wuproto.FileURLRequest
+	Method     string
+	FetchReq   *wuproto.FetchRequest
+	FileURLReq *wuproto.FileURLRequest
 }
 
 // FetchUpdates implements wuproto.WindowsUpdateClient.

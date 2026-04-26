@@ -3,7 +3,7 @@ package sdk
 import (
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 	"go.uber.org/zap"
 )
 

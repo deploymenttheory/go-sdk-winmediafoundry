@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
 )
 
 // Bus is a thread-safe, fan-out EventEmitter. Handlers are called

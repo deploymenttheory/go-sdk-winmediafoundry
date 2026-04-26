@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/catalog"
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk/transport"
+	"github.com/deploymenttheory/go-sdk-windowsuup/catalog"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk/transport"
 )
 
 // BuildsService provides methods for the /v1/builds endpoints.

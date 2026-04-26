@@ -38,7 +38,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/sdk"
+	"github.com/deploymenttheory/go-sdk-windowsuup/sdk"
 )
 
 func main() {

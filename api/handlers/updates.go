@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-uupdump/api/response"
-	"github.com/deploymenttheory/go-sdk-uupdump/winupdate"
-	"github.com/deploymenttheory/go-sdk-uupdump/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/api/response"
+	"github.com/deploymenttheory/go-sdk-windowsuup/winupdate"
+	"github.com/deploymenttheory/go-sdk-windowsuup/wuproto"
 )
 
 // UpdatesHandler handles live Windows Update fetch requests.

@@ -1,7 +1,6 @@
 package soap
 
 import (
-	"context"
 	"encoding/xml"
 	"fmt"
 	"net/url"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
-	"resty.dev/v3"
 )
 
 // File exclusion patterns (from UUP dump PHP source, get.php).
@@ -29,63 +27,9 @@ func shouldExclude(name string) bool {
 		reExcludePSF.MatchString(name)
 }
 
-// getFileURLs implements the GetExtendedUpdateInfo2 SOAP call.
-func (c *SOAPClient) getFileURLs(ctx context.Context, req wuproto.FileURLRequest) ([]wuproto.FileURL, *resty.Response, error) {
-	// Device attributes for EUI2 must match the context of the originating
-	// SyncUpdates call (arch, ring, build). Mismatched values cause the fe3cr
-	// endpoint to return an empty GetExtendedUpdateInfo2Result.
-	arch := string(req.Arch)
-	if arch == "" {
-		arch = "amd64"
-	}
-	ring := string(req.Ring)
-	if ring == "" {
-		ring = "Retail"
-	}
-	build := req.Build
-	if build == "" {
-		build = "10.0.26100.0"
-	}
-	deviceAttrs := buildDeviceAttributes(arch, ring, build, "", 48, "Production")
-
-	body := buildGetEUI2Envelope(time.Now(), c.cookies.deviceToken, req.UpdateID, req.Revision, deviceAttrs)
-
-	resp, err := c.cookies.post(ctx, clientSecuredEndpoint,
-		"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo2",
-		body)
-	if err != nil {
-		return nil, resp, fmt.Errorf("GetExtendedUpdateInfo2 SOAP call: %w", err)
-	}
-
-	// Retry on cookie errors (same pattern as FetchUpdates).
-	if resp.StatusCode() == 500 {
-		if isCookieError(resp.String()) {
-			c.cookies.invalidate()
-			_, err = c.cookies.get(ctx)
-			if err != nil {
-				return nil, resp, fmt.Errorf("cookie refresh after EUI2 error: %w", err)
-			}
-			body = buildGetEUI2Envelope(time.Now(), c.cookies.deviceToken, req.UpdateID, req.Revision, deviceAttrs)
-			resp, err = c.cookies.post(ctx, clientSecuredEndpoint,
-				"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo2",
-				body)
-			if err != nil {
-				return nil, resp, fmt.Errorf("GetExtendedUpdateInfo2 retry: %w", err)
-			}
-		}
-	}
-
-	if resp.StatusCode() != 200 {
-		return nil, resp, fmt.Errorf("GetExtendedUpdateInfo2 returned HTTP %d: %s", resp.StatusCode(), resp.String())
-	}
-
-	results, err := parseFileURLs(resp.Bytes())
-	return results, resp, err
-}
-
-// parseFileURLs extracts FileURL values from a raw GetExtendedUpdateInfo2 XML response.
+// ParseFileURLs extracts FileURL values from a raw GetExtendedUpdateInfo2 XML response.
 // Files are filtered (psf, diff, express) and deduplicated (keep largest size).
-func parseFileURLs(raw []byte) ([]wuproto.FileURL, error) {
+func ParseFileURLs(raw []byte) ([]wuproto.FileURL, error) {
 	var env getEUI2Envelope
 	if err := xml.Unmarshal(raw, &env); err != nil {
 		return nil, fmt.Errorf("unmarshal EUI2 response: %w", err)
@@ -158,3 +102,6 @@ func extractExpiry(rawURL string) time.Time {
 	}
 	return time.Unix(ts, 0).UTC()
 }
+
+// parseFileURLs is the unexported alias kept for internal package tests.
+func parseFileURLs(raw []byte) ([]wuproto.FileURL, error) { return ParseFileURLs(raw) }

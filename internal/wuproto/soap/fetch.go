@@ -1,7 +1,6 @@
 package soap
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/xml"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
-	"resty.dev/v3"
 )
 
 // parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo
@@ -60,112 +58,33 @@ var skuToProduct = map[int]string{
 	210: "WNC.OS",
 }
 
-// fetchUpdates implements the SyncUpdates SOAP call.
-func (c *SOAPClient) fetchUpdates(ctx context.Context, req wuproto.FetchRequest) ([]wuproto.UpdateResult, *resty.Response, error) {
-	cookie, err := c.cookies.get(ctx)
-	if err != nil {
-		return nil, nil, err
+// DefaultCheckBuild returns the appropriate default OS-version string to use in
+// SOAP device/product attributes when the caller has not specified one.
+//
+// Flight/Insider rings (Experimental, Beta, ReleasePreview, Canary, MSIT) carry
+// an explicit FlightingBranchName in the SOAP request, so an old legacy build
+// string is sufficient to trigger WU's upgrade path.
+//
+// The Retail ring derives its products Branch from branchFromBuild, so a recent
+// Windows 11 build string is required to produce Branch=ge_release (or similar)
+// and receive current stable builds.
+func DefaultCheckBuild(ring string) string {
+	if ringToFlightBranch[ring] != "" {
+		return "10.0.9600.0" // Insider/flight rings: explicit FlightingBranchName overrides
 	}
-
-	arch := string(req.Arch)
-	if arch == "" {
-		arch = "amd64"
-	}
-
-	ring := string(req.Ring)
-
-	// checkBuild is the OS version the device claims to be on.
-	//
-	// For Insider rings (Experimental/Dev/Beta/RP) an old build causes WU to
-	// offer current Insider builds because those rings use explicit
-	// FlightingBranchName values (Dev/WIS/RP/CanaryChannel) that override
-	// branch matching.
-	//
-	// For Retail ring the products string branch is derived from checkBuild
-	// via branchFromBuild(). We default to Win11 24H2 GA (10.0.26100.1) so
-	// CurrentBranch=ge_release and Branch=ge_release are both set correctly.
-	checkBuild := req.CheckBuild
-	if checkBuild == "" {
-		flightBranch := ringToFlightBranch[ring]
-		if flightBranch != "" {
-			// Insider/flight ring: use old build to trigger feature-upgrade path.
-			checkBuild = "10.0.9600.0"
-		} else {
-			// Retail / non-flight ring: target Win11 24H2 GA.
-			checkBuild = "10.0.26100.1"
-		}
-	}
-
-	buildType := string(req.Type)
-	if buildType == "" {
-		buildType = "Production"
-	}
-
-	sku := req.SKU
-	if sku == 0 {
-		sku = 48 // Windows 11 Professional
-	}
-
-	deviceAttrs := buildDeviceAttributes(arch, ring, checkBuild, "", sku, buildType)
-	callerAttrs := "E:Profile=AUv2&Acquisition=1&Interactive=1&IsSeeker=1&SheddingAware=1&Id=MoUpdateOrchestrator"
-	products := buildProductsString(arch, ring, checkBuild, sku)
-	syncCurrentOnly := req.Build != ""
-
-	body := buildSyncUpdatesEnvelope(
-		time.Now(),
-		c.cookies.deviceToken,
-		cookie,
-		deviceAttrs,
-		callerAttrs,
-		products,
-		syncCurrentOnly,
-	)
-
-	resp, err := c.cookies.post(ctx, clientEndpoint,
-		"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/SyncUpdates",
-		body)
-	if err != nil {
-		return nil, resp, fmt.Errorf("SyncUpdates SOAP call: %w", err)
-	}
-
-	// On HTTP 500 with cookie/config errors, invalidate and retry once.
-	if resp.StatusCode() == 500 {
-		if isCookieError(resp.String()) {
-			c.logger.Warn("WU cookie error, refreshing and retrying")
-			c.cookies.invalidate()
-			cookie, err = c.cookies.get(ctx)
-			if err != nil {
-				return nil, resp, fmt.Errorf("cookie refresh after error: %w", err)
-			}
-			body = buildSyncUpdatesEnvelope(time.Now(), c.cookies.deviceToken, cookie,
-				deviceAttrs, callerAttrs, products, syncCurrentOnly)
-			resp, err = c.cookies.post(ctx, clientEndpoint,
-				"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/SyncUpdates",
-				body)
-			if err != nil {
-				return nil, resp, fmt.Errorf("SyncUpdates retry: %w", err)
-			}
-		}
-	}
-
-	if resp.StatusCode() != 200 {
-		return nil, resp, fmt.Errorf("SyncUpdates returned HTTP %d: %s", resp.StatusCode(), resp.String())
-	}
-
-	results, err := parseSyncUpdatesResponse(resp.Bytes())
-	return results, resp, err
+	return "10.0.26100.1" // Retail: Win11 24H2 GA → Branch=ge_release
 }
 
-// isCookieError returns true when the WU error response indicates a cookie/
-// config problem that warrants a cookie refresh.
+// IsCookieError returns true when the WU error response body indicates a
+// cookie / config problem that warrants a cookie refresh and retry.
 var cookieErrorRegexp = regexp.MustCompile(`(?i)(ConfigChanged|CookieExpired|InvalidCookie)`)
 
-func isCookieError(body string) bool {
+func IsCookieError(body string) bool {
 	return cookieErrorRegexp.MatchString(body)
 }
 
-// parseSyncUpdatesResponse extracts UpdateResult values from a raw SyncUpdates XML response.
-func parseSyncUpdatesResponse(raw []byte) ([]wuproto.UpdateResult, error) {
+// ParseSyncUpdatesResponse extracts UpdateResult values from a raw SyncUpdates XML response.
+func ParseSyncUpdatesResponse(raw []byte) ([]wuproto.UpdateResult, error) {
 	var env syncUpdatesEnvelope
 	if err := xml.Unmarshal(raw, &env); err != nil {
 		return nil, fmt.Errorf("unmarshal SyncUpdates response: %w", err)
@@ -302,10 +221,10 @@ func productNameToArch(pn string) wuproto.Arch {
 	}
 }
 
-// buildDeviceAttributes constructs the E: device attributes string sent in
+// BuildDeviceAttributes constructs the E: device attributes string sent in
 // SyncUpdates and GetExtendedUpdateInfo2. Ported from UUP dump PHP reference
 // (shared/requests.php composeDeviceAttributes).
-func buildDeviceAttributes(arch, ring, build, _ string, sku int, buildType string) string {
+func BuildDeviceAttributes(arch, ring, build, _ string, sku int, buildType string) string {
 	blockUpgrades := "0"
 	flightEnabled := "1"
 	isRetail := "0"
@@ -530,9 +449,9 @@ func branchFromBuild(build string) string {
 	}
 }
 
-// buildProductsString constructs the full products string for SyncUpdates.
+// BuildProductsString constructs the full products string for SyncUpdates.
 // Ported from UUP dump PHP source (shared/requests.php composeFetchUpdRequest).
-func buildProductsString(arch, ring, build string, sku int) string {
+func BuildProductsString(arch, ring, build string, sku int) string {
 	productPrefix, ok := skuToProduct[sku]
 	if !ok {
 		productPrefix = "Client.OS"
@@ -567,4 +486,18 @@ func buildProductsString(arch, ring, build string, sku int) string {
 	}
 
 	return strings.Join(products, ";")
+}
+
+// isCookieError is the unexported alias kept for internal package tests.
+// New code should use IsCookieError.
+func isCookieError(body string) bool { return IsCookieError(body) }
+
+// parseSyncUpdatesResponse is the unexported alias kept for internal package tests.
+func parseSyncUpdatesResponse(raw []byte) ([]wuproto.UpdateResult, error) {
+	return ParseSyncUpdatesResponse(raw)
+}
+
+// buildDeviceAttributes is the unexported alias kept for internal package tests.
+func buildDeviceAttributes(arch, ring, build, extra string, sku int, buildType string) string {
+	return BuildDeviceAttributes(arch, ring, build, extra, sku, buildType)
 }

@@ -22,6 +22,7 @@ func newMessageID() string {
 }
 
 // buildGetCookieEnvelope returns the SOAP XML body for a GetCookie request.
+// Unexported — used only by CookieManager.acquire.
 func buildGetCookieEnvelope(now time.Time, deviceToken string) string {
 	msgID := newMessageID()
 	created := w3cTime(now)
@@ -53,18 +54,22 @@ func buildGetCookieEnvelope(now time.Time, deviceToken string) string {
     </GetCookie>
   </s:Body>
 </s:Envelope>`,
-		msgID, clientEndpoint,
+		msgID, ClientEndpoint,
 		created, expires,
 		deviceToken,
 		created, created, created,
 	)
 }
 
-// buildSyncUpdatesEnvelope returns the SOAP XML body for a SyncUpdates request.
-func buildSyncUpdatesEnvelope(
+// BuildSyncUpdatesEnvelope returns the SOAP XML body for a SyncUpdates request.
+//
+// encryptedData and cookieExpiration come from CookieManager.Get().
+// deviceAttrs is built with BuildDeviceAttributes; products with BuildProductsString.
+func BuildSyncUpdatesEnvelope(
 	now time.Time,
 	deviceToken string,
-	cookie *cachedCookie,
+	encryptedData string,
+	cookieExpiration string,
 	deviceAttrs string,
 	callerAttrs string,
 	products string,
@@ -130,11 +135,11 @@ func buildSyncUpdatesEnvelope(
     </SyncUpdates>
   </s:Body>
 </s:Envelope>`,
-		msgID, clientEndpoint,
+		msgID, ClientEndpoint,
 		created, expires,
 		deviceToken,
-		cookie.expiration,
-		cookie.encryptedData,
+		cookieExpiration,
+		encryptedData,
 		installedIDs,
 		syncCurrent,
 		htmlEncode(deviceAttrs),
@@ -143,8 +148,8 @@ func buildSyncUpdatesEnvelope(
 	)
 }
 
-// buildGetEUI2Envelope returns the SOAP XML body for a GetExtendedUpdateInfo2 request.
-func buildGetEUI2Envelope(now time.Time, deviceToken string, updateID string, revision int, deviceAttrs string) string {
+// BuildGetEUI2Envelope returns the SOAP XML body for a GetExtendedUpdateInfo2 request.
+func BuildGetEUI2Envelope(now time.Time, deviceToken string, updateID string, revision int, deviceAttrs string) string {
 	msgID := newMessageID()
 	created := w3cTime(now)
 	expires := w3cTime(now.Add(120 * time.Second))
@@ -185,7 +190,7 @@ func buildGetEUI2Envelope(now time.Time, deviceToken string, updateID string, re
     </GetExtendedUpdateInfo2>
   </s:Body>
 </s:Envelope>`,
-		msgID, clientSecuredEndpoint,
+		msgID, ClientSecuredEndpoint,
 		created, expires,
 		deviceToken,
 		updateID, revision,

@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// wuCertPool returns a cert pool seeded with the system roots plus the
+// WUCertPool returns a cert pool seeded with the system roots plus the
 // Microsoft CA chain needed to verify the Windows Update SOAP endpoints.
 // See microsoftUpdateCAs for the rationale.
-func wuCertPool() (*x509.CertPool, error) {
+func WUCertPool() (*x509.CertPool, error) {
 	pool, err := x509.SystemCertPool()
 	if err != nil {
 		// SystemCertPool returns an error on some platforms (e.g. Windows

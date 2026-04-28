@@ -1,115 +1,36 @@
-// Package soap provides a concrete implementation of
-// wuproto.WindowsUpdateClient using the Windows Update SOAP protocol.
+// Package soap provides Windows Update SOAP protocol utilities.
 //
-// It handles device token generation, encrypted session cookie acquisition and
-// caching, and both SyncUpdates (FetchUpdates) and GetExtendedUpdateInfo2
-// (GetFileURLs) SOAP calls.
+// HTTP execution has moved to the windowsuup/client Transport layer. This
+// package now exposes only:
+//   - Endpoint and SOAP action constants
+//   - CookieManager for WU session cookie acquisition and caching
+//   - Envelope builders (BuildSyncUpdatesEnvelope, BuildGetEUI2Envelope)
+//   - Response parsers (ParseSyncUpdatesResponse, ParseFileURLs)
+//   - Domain helpers (BuildDeviceAttributes, BuildProductsString, IsCookieError)
 package soap
 
-import (
-	"context"
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"time"
+// Windows Update SOAP endpoint URLs.
+const (
+	// ClientEndpoint is used for GetCookie and SyncUpdates calls.
+	ClientEndpoint = "https://fe3.delivery.mp.microsoft.com/ClientWebService/client.asmx"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
-	"go.uber.org/zap"
-	"resty.dev/v3"
+	// ClientSecuredEndpoint is used for GetExtendedUpdateInfo2 calls.
+	ClientSecuredEndpoint = "https://fe3cr.delivery.mp.microsoft.com/ClientWebService/client.asmx/secured"
 )
 
-// SOAPClient is a wuproto.WindowsUpdateClient that speaks the Windows Update
-// SOAP protocol directly.
-//
-// Create one with New. SOAPClient is safe for concurrent use.
-type SOAPClient struct {
-	cookies *cookieManager
-	logger  *zap.Logger
-}
+// Windows Update SOAP action URIs.
+const (
+	GetCookieAction   = "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetCookie"
+	SyncUpdatesAction = "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/SyncUpdates"
+	GetEUI2Action     = "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo2"
+)
 
-// Option configures a SOAPClient.
-type Option func(*config)
+// UserAgent is the Windows Update client user agent string sent with every SOAP request.
+const UserAgent = "Windows-Update-Agent/10.0.10011.16384 Client-Protocol/2.50"
 
-type config struct {
-	timeout    time.Duration
-	tlsConfig  *tls.Config
-	httpClient *http.Client
-}
+// ContentType is the SOAP 1.2 content type.
+const ContentType = "application/soap+xml; charset=utf-8"
 
-func defaultConfig() *config {
-	return &config{
-		timeout: 60 * time.Second,
-	}
-}
-
-// WithTimeout sets the per-request HTTP timeout (default 60 s).
-func WithTimeout(d time.Duration) Option {
-	return func(c *config) { c.timeout = d }
-}
-
-// WithTLSConfig replaces the TLS configuration used by the HTTP client.
-func WithTLSConfig(cfg *tls.Config) Option {
-	return func(c *config) { c.tlsConfig = cfg }
-}
-
-// WithHTTPClient replaces the HTTP client entirely (overrides timeout and TLS).
-func WithHTTPClient(hc *http.Client) Option {
-	return func(c *config) { c.httpClient = hc }
-}
-
-// New creates a SOAPClient, generating a device token and acquiring the first
-// WU session cookie eagerly (to surface auth failures early).
-func New(logger *zap.Logger, opts ...Option) (*SOAPClient, error) {
-	cfg := defaultConfig()
-	for _, o := range opts {
-		o(cfg)
-	}
-
-	var rc *resty.Client
-	if cfg.httpClient != nil {
-		// Caller-supplied http.Client: wrap it in resty.
-		rc = resty.NewWithClient(cfg.httpClient)
-	} else {
-		// Build a TLS-aware http.Client and wrap it in resty.
-		tlsCfg := cfg.tlsConfig
-		if tlsCfg == nil {
-			pool, err := wuCertPool()
-			if err != nil {
-				return nil, fmt.Errorf("build TLS cert pool: %w", err)
-			}
-			tlsCfg = &tls.Config{RootCAs: pool}
-		}
-		hc := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig:   tlsCfg,
-				DisableKeepAlives: false,
-			},
-		}
-		rc = resty.NewWithClient(hc)
-	}
-
-	// Apply SOAP defaults that every request inherits.
-	rc.SetTimeout(cfg.timeout).
-		SetHeader("Content-Type", "application/soap+xml; charset=utf-8").
-		SetHeader("User-Agent", userAgent)
-
-	cm, err := newCookieManager(rc, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SOAPClient{
-		cookies: cm,
-		logger:  logger,
-	}, nil
-}
-
-// FetchUpdates implements wuproto.WindowsUpdateClient.
-func (c *SOAPClient) FetchUpdates(ctx context.Context, req wuproto.FetchRequest) ([]wuproto.UpdateResult, *resty.Response, error) {
-	return c.fetchUpdates(ctx, req)
-}
-
-// GetFileURLs implements wuproto.WindowsUpdateClient.
-func (c *SOAPClient) GetFileURLs(ctx context.Context, req wuproto.FileURLRequest) ([]wuproto.FileURL, *resty.Response, error) {
-	return c.getFileURLs(ctx, req)
-}
+// CallerAttrs is the WU caller attributes string embedded in SyncUpdates
+// SOAP request bodies.
+const CallerAttrs = "E:Profile=AUv2&Acquisition=1&Interactive=1&IsSeeker=1&SheddingAware=1&Id=MoUpdateOrchestrator"

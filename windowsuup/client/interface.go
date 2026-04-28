@@ -5,27 +5,35 @@ package client
 import (
 	"context"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
 	"go.uber.org/zap"
-	"resty.dev/v3"
 )
 
 // Client is the interface that all API service packages depend on.
-// It exposes the underlying SOAP operations and supporting utilities
-// without coupling services to a concrete transport implementation.
+// It exposes generic HTTP request building plus Windows Update session cookie
+// management — the two primitives needed to execute SOAP calls and CDN
+// downloads without coupling services to a concrete transport implementation.
 type Client interface {
-	// FetchUpdates calls the SyncUpdates SOAP endpoint to discover available builds.
-	FetchUpdates(ctx context.Context, req wuproto.FetchRequest) ([]wuproto.UpdateResult, *resty.Response, error)
-
-	// GetFileURLs calls GetExtendedUpdateInfo2 to resolve live CDN download URLs
-	// for the files associated with a specific build revision.
-	GetFileURLs(ctx context.Context, req wuproto.FileURLRequest) ([]wuproto.FileURL, *resty.Response, error)
-
-	// GetDownloadClient returns the resty client used for CDN file downloads.
-	// This client has no read timeout and is configured with SetDoNotParseResponse
-	// to support streaming of large files.
-	GetDownloadClient() *resty.Client
+	// NewRequest returns a RequestBuilder for this transport. The service layer
+	// uses it to construct the full request — headers, body, query params —
+	// before calling Get/Post/Delete to execute it. Retry, concurrency limiting,
+	// and throttling are applied by the transport.
+	NewRequest(ctx context.Context) *RequestBuilder
 
 	// GetLogger returns the structured logger shared across the SDK.
 	GetLogger() *zap.Logger
+
+	// AcquireWUCookie returns the current Windows Update session cookie values
+	// needed to construct SOAP request bodies. The cookie is fetched lazily and
+	// cached for ~14 minutes; subsequent calls return the cached value unless it
+	// has expired.
+	//
+	// encryptedData and expiration are embedded in SyncUpdates request bodies.
+	// deviceToken is the device ticket used across all SOAP calls.
+	AcquireWUCookie(ctx context.Context) (encryptedData, expiration, deviceToken string, err error)
+
+	// InvalidateWUCookie clears the cached WU session cookie so the next
+	// AcquireWUCookie call triggers a fresh GetCookie SOAP request.
+	// Call this after receiving an HTTP 500 response that indicates a stale
+	// or expired cookie (see soap.IsCookieError).
+	InvalidateWUCookie()
 }

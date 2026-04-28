@@ -32,6 +32,7 @@ import (
 	downloadapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/download"
 	filesapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
+	"go.uber.org/zap"
 )
 
 // Client is the entry point for the Windows Update SDK.
@@ -52,12 +53,13 @@ type Client struct {
 	Diff *diffapi.Service
 }
 
-// NewClient constructs a Client and eagerly acquires the first Windows Update
-// session cookie to surface connectivity failures at construction time.
+// NewClient constructs a Client with the given options.
 func NewClient(opts ...ClientOption) (*Client, error) {
-	settings := client.DefaultTransportSettings()
+	settings := &client.TransportSettings{}
 	for _, o := range opts {
-		o(settings)
+		if err := o(settings); err != nil {
+			return nil, fmt.Errorf("windowsuup.NewClient: apply option: %w", err)
+		}
 	}
 
 	transport, err := client.NewTransport(settings)
@@ -72,4 +74,9 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		Download:  downloadapi.New(transport),
 		Diff:      diffapi.New(transport),
 	}, nil
+}
+
+// GetLogger returns the structured logger used by the SDK transport.
+func (c *Client) GetLogger() *zap.Logger {
+	return c.transport.GetLogger()
 }

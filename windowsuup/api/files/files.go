@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
+	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto/soap"
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
+	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
 	"resty.dev/v3"
 )
@@ -36,49 +39,112 @@ func (s *Service) GetFiles(ctx context.Context, build models.Build, opts ...File
 		o(cfg)
 	}
 
-	var fileURLs []wuproto.FileURL
-
 	if cfg.withURLs {
-		urls, resp, err := s.client.GetFileURLs(ctx, wuproto.FileURLRequest{
-			UpdateID: build.UUID,
-			Revision: build.Revision,
-			Arch:     wuproto.Arch(build.Arch),
-			Ring:     wuproto.Ring(build.Ring),
-			Build:    build.Build,
-		})
+		return s.resolveFileURLs(ctx, build, cfg)
+	}
+	return s.fetchFileMetadata(ctx, build, cfg)
+}
+
+// resolveFileURLs calls GetExtendedUpdateInfo2 to get signed CDN download URLs.
+// URLs expire approximately 12 minutes after resolution.
+func (s *Service) resolveFileURLs(ctx context.Context, build models.Build, cfg *fileConfig) ([]models.File, *resty.Response, error) {
+	arch := string(build.Arch)
+	ring := string(build.Ring)
+	deviceAttrs := soap.BuildDeviceAttributes(arch, ring, build.Build, "", build.SKU, "")
+
+	// Cookie-aware retry: invalidate and retry once on cookie errors.
+	const maxCookieRetries = 1
+	for attempt := 0; attempt <= maxCookieRetries; attempt++ {
+		_, _, devToken, err := s.client.AcquireWUCookie(ctx)
 		if err != nil {
-			return nil, resp, fmt.Errorf("GetFiles: resolve CDN URLs: %w", err)
+			return nil, nil, fmt.Errorf("GetFiles: acquire WU cookie: %w", err)
 		}
-		fileURLs = urls
-		// Return early with the CDN resp so callers can inspect it.
-		files := buildFileList(fileURLs, cfg)
-		return files, resp, nil
-	}
 
-	// Re-fetch metadata via SyncUpdates — stateless model has no local cache.
-	results, resp, err := s.client.FetchUpdates(ctx, wuproto.FetchRequest{
-		Arch:  wuproto.Arch(build.Arch),
-		Ring:  wuproto.Ring(build.Ring),
-		Build: build.Build,
-	})
-	if err != nil {
-		return nil, resp, fmt.Errorf("GetFiles: re-fetch for metadata: %w", err)
-	}
-	for _, r := range results {
-		if r.UpdateID == build.UUID {
-			for _, fm := range r.Files {
-				fileURLs = append(fileURLs, wuproto.FileURL{
-					Name:      fm.Name,
-					SHA1:      fm.SHA1,
-					SHA256:    fm.SHA256,
-					SizeBytes: fm.SizeBytes,
-				})
+		envelope := soap.BuildGetEUI2Envelope(time.Now(), devToken, build.UUID, build.Revision, deviceAttrs)
+
+		resp, err := s.client.NewRequest(ctx).
+			SetHeader("Content-Type", constants.ApplicationSOAPXML).
+			SetHeader("SOAPAction", soap.GetEUI2Action).
+			SetBody(envelope).
+			Post(soap.ClientSecuredEndpoint)
+		if err != nil {
+			if attempt < maxCookieRetries && soap.IsCookieError(err.Error()) {
+				s.client.InvalidateWUCookie()
+				continue
 			}
-			break
+			return nil, resp, fmt.Errorf("GetFiles: GetExtendedUpdateInfo2: %w", err)
 		}
+
+		fileURLs, parseErr := soap.ParseFileURLs(resp.Bytes())
+		if parseErr != nil {
+			return nil, resp, fmt.Errorf("GetFiles: parse EUI2 response: %w", parseErr)
+		}
+
+		return buildFileList(fileURLs, cfg), resp, nil
 	}
 
-	return buildFileList(fileURLs, cfg), resp, nil
+	return nil, nil, fmt.Errorf("GetFiles: unexpected retry loop exit")
+}
+
+// fetchFileMetadata re-fetches build metadata via SyncUpdates.
+// Used when CDN URLs are not needed — avoids the more expensive EUI2 call.
+func (s *Service) fetchFileMetadata(ctx context.Context, build models.Build, cfg *fileConfig) ([]models.File, *resty.Response, error) {
+	arch := string(build.Arch)
+	ring := string(build.Ring)
+	deviceAttrs := soap.BuildDeviceAttributes(arch, ring, build.Build, "", build.SKU, "")
+	products := soap.BuildProductsString(arch, ring, build.Build, build.SKU)
+
+	// Cookie-aware retry: invalidate and retry once on cookie errors.
+	const maxCookieRetries = 1
+	for attempt := 0; attempt <= maxCookieRetries; attempt++ {
+		encData, expiry, devToken, err := s.client.AcquireWUCookie(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("GetFiles: acquire WU cookie: %w", err)
+		}
+
+		envelope := soap.BuildSyncUpdatesEnvelope(
+			time.Now(), devToken, encData, expiry,
+			deviceAttrs, soap.CallerAttrs, products,
+			true, // syncCurrentOnly: we know the exact build
+		)
+
+		resp, err := s.client.NewRequest(ctx).
+			SetHeader("Content-Type", constants.ApplicationSOAPXML).
+			SetHeader("SOAPAction", soap.SyncUpdatesAction).
+			SetBody(envelope).
+			Post(soap.ClientEndpoint)
+		if err != nil {
+			if attempt < maxCookieRetries && soap.IsCookieError(err.Error()) {
+				s.client.InvalidateWUCookie()
+				continue
+			}
+			return nil, resp, fmt.Errorf("GetFiles: SyncUpdates: %w", err)
+		}
+
+		results, parseErr := soap.ParseSyncUpdatesResponse(resp.Bytes())
+		if parseErr != nil {
+			return nil, resp, fmt.Errorf("GetFiles: parse SyncUpdates response: %w", parseErr)
+		}
+
+		var fileURLs []wuproto.FileURL
+		for _, r := range results {
+			if r.UpdateID == build.UUID {
+				for _, fm := range r.Files {
+					fileURLs = append(fileURLs, wuproto.FileURL{
+						Name:      fm.Name,
+						SHA1:      fm.SHA1,
+						SHA256:    fm.SHA256,
+						SizeBytes: fm.SizeBytes,
+					})
+				}
+				break
+			}
+		}
+
+		return buildFileList(fileURLs, cfg), resp, nil
+	}
+
+	return nil, nil, fmt.Errorf("GetFiles: unexpected retry loop exit")
 }
 
 // buildFileList converts wuproto.FileURL slice to models.File slice and applies filters.

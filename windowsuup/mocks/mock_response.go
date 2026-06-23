@@ -26,10 +26,10 @@ func NewMockResponse(statusCode int, headers http.Header, body []byte) *resty.Re
 	}
 
 	// Use a minimal resty.Request so that resp.Bytes() does not panic when it
-	// calls r.Request.DoNotParseResponse.
+	// calls r.Request.IsResponseDoNotParse.
 	req := &resty.Request{
-		URL:                "",
-		DoNotParseResponse: false,
+		URL:                  "",
+		IsResponseDoNotParse: false,
 	}
 
 	return &resty.Response{

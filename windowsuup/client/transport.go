@@ -231,7 +231,7 @@ func (t *Transport) executeRequest(req *resty.Request, method, path string) (*re
 		return resp, fmt.Errorf("request failed: %w", execErr)
 	}
 
-	if resp.IsError() {
+	if resp.IsStatusFailure() {
 		return resp, ParseErrorResponse(
 			resp.Bytes(),
 			resp.StatusCode(),

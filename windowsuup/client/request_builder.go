@@ -67,7 +67,7 @@ func (b *RequestBuilder) SetResult(result any) *RequestBuilder {
 // Set to true for streaming large downloads so the caller can read
 // resp.RawResponse.Body directly.
 func (b *RequestBuilder) SetDoNotParseResponse(val bool) *RequestBuilder {
-	b.req.SetDoNotParseResponse(val)
+	b.req.SetResponseDoNotParse(val)
 	return b
 }
 

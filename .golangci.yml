@@ -106,6 +106,14 @@ linters:
         linters:
           - gosec
 
+      # the cab/LZX/MSZIP decompressor performs many integer conversions and
+      # slice indexings bounded by the on-disk format that gosec cannot prove
+      # safe (G115 integer overflow, G602 slice index)
+      - path: internal/cab/
+        text: "G115|G602"
+        linters:
+          - gosec
+
       # drop staticcheck’s SA9003 messages
       - linters:
           - staticcheck

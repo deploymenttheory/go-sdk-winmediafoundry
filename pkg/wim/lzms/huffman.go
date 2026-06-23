@@ -1,6 +1,6 @@
 package lzms
 
-import "sort"
+import "slices"
 
 // LZMS uses adaptive Huffman codes that both the compressor and decompressor
 // rebuild from identical, evolving symbol frequencies. The codeword-length
@@ -82,7 +82,10 @@ func makeCanonicalLens(numSyms int, freqs []uint32, lens []byte, a []uint32) {
 		a[numUsed] = uint32(sym) | (freqs[sym] << numSymbolBits)
 		numUsed++
 	}
-	sort.Slice(a[:numUsed], func(i, j int) bool { return a[i] < a[j] })
+	// Packed values are distinct (each holds a unique symbol in its low bits),
+	// so a plain ascending sort matches the freq-then-symbol order wimlib uses.
+	// slices.Sort avoids sort.Slice's reflection overhead (a decode hot path).
+	slices.Sort(a[:numUsed])
 
 	if numUsed == 0 {
 		return
@@ -187,9 +190,14 @@ func buildDecodeTable(table []uint16, lens []byte) {
 		if l == 0 {
 			continue
 		}
-		next := pos[l] + 1<<(maxCodewordLen-l)
-		for i := pos[l]; i < next; i++ {
-			table[i] = uint16(sym)
+		start := pos[l]
+		next := start + 1<<(maxCodewordLen-l)
+		// Fill table[start:next] with sym. Short codewords cover huge runs
+		// (a length-1 code fills half the table), so grow the filled region by
+		// doubling copies (memmove) instead of a per-element loop.
+		table[start] = uint16(sym)
+		for filled := 1; start+filled < next; {
+			filled += copy(table[start+filled:next], table[start:start+filled])
 		}
 		pos[l] = next
 	}

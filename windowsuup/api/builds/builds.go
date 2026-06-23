@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/internal/wuproto/soap"
+	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto/soap"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"

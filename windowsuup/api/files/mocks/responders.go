@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/deploymenttheory/winmediafoundry/internal/wuproto/soap"
+	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto/soap"
 	windowsuupmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
 )
 

@@ -6,10 +6,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/internal/wuproto"
+	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto"
 )
 
 // parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo
@@ -190,7 +191,7 @@ func parseUpdateBlob(blob string) (*updateBlobFragment, error) {
 	wrapped := "<root>" + blob + "</root>"
 	var frag updateBlobFragment
 	if err := xml.Unmarshal([]byte(wrapped), &frag); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse update blob: %w", err)
 	}
 	return &frag, nil
 }
@@ -420,8 +421,10 @@ func branchFromBuild(build string) string {
 	if len(parts) < 3 {
 		return "rs_prerelease"
 	}
-	var bldnum int
-	fmt.Sscanf(parts[2], "%d", &bldnum)
+	bldnum, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return "rs_prerelease"
+	}
 
 	switch {
 	case bldnum >= 27000:

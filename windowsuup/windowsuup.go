@@ -30,7 +30,6 @@ import (
 	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
 	diffapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/diff"
 	downloadapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/download"
-	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
 	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
 	"go.uber.org/zap"
@@ -52,10 +51,6 @@ type Client struct {
 
 	// Diff exposes build file-set comparison operations.
 	Diff *diffapi.Service
-
-	// ESD exposes Windows installation ESD catalog resolution (Media Creation
-	// Tool products.cab) — how a full, bootable install.esd is obtained.
-	ESD *esdapi.Service
 }
 
 // NewClient constructs a Client with the given options.
@@ -78,7 +73,6 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		Files:     filesapi.New(transport),
 		Download:  downloadapi.New(transport),
 		Diff:      diffapi.New(transport),
-		ESD:       esdapi.New(transport),
 	}, nil
 }
 

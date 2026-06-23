@@ -1,12 +1,12 @@
 //go:build acceptance
 
-// Acceptance tests for the ESD media catalog. These make a live request to
-// Microsoft's Media Creation Tool fwlink, decompress the returned products.cab
-// (pure-Go LZX), and parse the ESD catalog.
+// Acceptance tests for the ESD media catalog client. These make a live request
+// to Microsoft's Media Creation Tool fwlink, decompress the returned
+// products.cab (pure-Go LZX), and parse the ESD catalog.
 //
 // Run with:
 //
-//	go test -tags=acceptance -timeout=120s -v ./windowsuup/acceptance/...
+//	go test -tags=acceptance -timeout=120s -v ./esd/...
 package acceptance_test
 
 import (
@@ -15,18 +15,20 @@ import (
 	"testing"
 	"time"
 
-	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
+	"github.com/deploymenttheory/winmediafoundry/esd"
+	esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAcceptance_ESDCatalog_Windows11(t *testing.T) {
-	c := newAcceptanceClient(t)
+	c, err := esd.NewClient()
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	cat, resp, err := c.ESD.Catalog(ctx, esdapi.WithProduct(esdapi.Windows11))
-	require.NoError(t, err, "ESD.Catalog should fetch and parse products.cab")
+	cat, resp, err := c.Catalog(ctx, esdapi.WithProduct(esdapi.Windows11))
+	require.NoError(t, err, "Catalog should fetch and parse products.cab")
 	require.NotNil(t, resp)
 	require.NotEmpty(t, cat.Images, "catalog should contain ESD images")
 

@@ -14,21 +14,21 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
-	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
+	"github.com/deploymenttheory/winmediafoundry/esd"
+	esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
 )
 
 func main() {
 	ctx := context.Background()
 
-	client, err := windowsuup.NewClient()
+	client, err := esd.NewClient()
 	if err != nil {
 		log.Fatalf("NewClient: %v", err)
 	}
 
-	catalog, _, err := client.ESD.Catalog(ctx, esdapi.WithProduct(esdapi.Windows11))
+	catalog, _, err := client.Catalog(ctx, esdapi.WithProduct(esdapi.Windows11))
 	if err != nil {
-		log.Fatalf("ESD.Catalog: %v", err)
+		log.Fatalf("Catalog: %v", err)
 	}
 
 	fmt.Printf("Parsed %d ESD images (%d editions, %d languages, %d architectures)\n\n",

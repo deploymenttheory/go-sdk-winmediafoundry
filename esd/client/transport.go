@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto/soap"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/esd/constants"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

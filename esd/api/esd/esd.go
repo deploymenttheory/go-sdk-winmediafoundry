@@ -16,9 +16,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/winmediafoundry/esd/client"
 	"github.com/deploymenttheory/winmediafoundry/pkg/cab"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/esd/shared/models"
 	"resty.dev/v3"
 )
 

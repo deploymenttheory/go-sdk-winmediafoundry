@@ -1,8 +1,5 @@
-// Package wuproto defines the interface and domain types for the Windows
-// Update SOAP protocol layer.
-//
-// The production implementation lives in internal/wuproto/soap. This package
-// is internal to winmediafoundry and not importable by external modules.
+// Package wuproto defines the interface and domain types for the Windows Update
+// SOAP protocol layer. The concrete implementation lives in pkg/wuproto/soap.
 package wuproto
 
 import (

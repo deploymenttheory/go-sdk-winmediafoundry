@@ -26,8 +26,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
+	"github.com/deploymenttheory/winmediafoundry/esd"
 	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup"
+	wumodels "github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 )
 
 func newE2EClient(t *testing.T) *windowsuup.Client {
@@ -42,8 +44,11 @@ func TestE2E_DownloadAndReadESD(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
-	// 1. Resolve the catalog and pick the smallest real ESD to minimize bytes.
-	cat, _, err := c.ESD.Catalog(ctx)
+	// 1. Resolve the catalog (separate ESD client) and pick the smallest real
+	// ESD to minimize bytes.
+	esdClient, err := esd.NewClient()
+	require.NoError(t, err)
+	cat, _, err := esdClient.Catalog(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, cat.Images)
 	imgs := cat.Images
@@ -51,9 +56,11 @@ func TestE2E_DownloadAndReadESD(t *testing.T) {
 	chosen := imgs[0]
 	t.Logf("downloading %s (%.2f GB)", chosen.FileName, float64(chosen.SizeBytes)/1e9)
 
-	// 2. Download it and verify the catalog SHA-1.
+	// 2. Download it (via the windowsuup download service) and verify the
+	// catalog SHA-1.
 	dir := t.TempDir()
-	_, err = c.Download.DownloadFile(ctx, chosen.AsFile(), dir)
+	dlFile := wumodels.File{Name: chosen.FileName, SizeBytes: chosen.SizeBytes, FileType: "esd", URL: chosen.URL}
+	_, err = c.Download.DownloadFile(ctx, dlFile, dir)
 	require.NoError(t, err)
 	path := filepath.Join(dir, chosen.FileName)
 

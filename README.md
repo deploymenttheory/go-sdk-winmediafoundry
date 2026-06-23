@@ -12,8 +12,10 @@ oscdimg, or cabextract). It has two layers:
 - **Windows Update service client** (`windowsuup/`) — makes direct SOAP calls to
   `fe3.delivery.mp.microsoft.com` / `fe3cr.delivery.mp.microsoft.com` to discover
   Windows builds by ring and architecture, resolve pre-signed CDN URLs, stream
-  ESD/CAB files to disk, and diff file sets between builds; plus the Media
-  Creation Tool ESD catalog (`client.ESD`).
+  ESD/CAB files to disk, and diff file sets between builds.
+- **ESD catalog client** (`esd/`) — a standalone client (same architecture as
+  `windowsuup`) that fetches Microsoft's Media Creation Tool catalog
+  (`products.cab`) and resolves full installation-ESD download URLs.
 - **Windows imaging libraries** (`pkg/`) — read, extract, and write WIM/ESD
   images (LZMS / XPRESS / LZX), read CAB archives, write UDF file systems, and
   master bootable ISO9660 + El Torito images, culminating in a one-call
@@ -188,14 +190,21 @@ fmt.Printf("+%d -%d ~%d =%d\n",
 | `Changed` | `[]models.FileDiff` | Files present in both but with differing content |
 | `Unchanged` | `int` | Count of files identical in both builds |
 
-### ESD Catalog
+## ESD Catalog Client
 
-`client.ESD.Catalog` fetches Microsoft's Media Creation Tool catalog
-(`products.cab`), decompresses it (pure-Go LZX), and returns the list of full
-installation ESDs with direct CDN URLs and SHA-1 hashes.
+The standalone `esd` client (its own `NewClient`, structured like `windowsuup`)
+fetches Microsoft's Media Creation Tool catalog (`products.cab`), decompresses it
+(pure-Go LZX), and returns the list of full installation ESDs with direct CDN
+URLs and SHA-1 hashes.
 
 ```go
-cat, _, err := client.ESD.Catalog(ctx, esd.WithProduct(esd.Windows11))
+import (
+    "github.com/deploymenttheory/winmediafoundry/esd"
+    esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
+)
+
+client, _ := esd.NewClient()
+cat, _, err := client.Catalog(ctx, esdapi.WithProduct(esdapi.Windows11))
 pro := cat.Filter("Professional", "x64", "en-us")
 fmt.Println(pro[0].FileName, pro[0].URL)
 ```
@@ -308,22 +317,23 @@ ISO, use `pkg/wim` directly (`examples/06_wim_info`, `07_wim_tree`,
 
 ## Package Layout
 
-The Windows Update **service client** lives under `windowsuup/`; the reusable
-**imaging libraries** live under `pkg/` (see above).
+The Windows Update **service client** lives under `windowsuup/`, the standalone
+**ESD catalog client** under `esd/`, and the reusable **imaging libraries** under
+`pkg/` (see above).
 
 | Package | Description |
 |---|---|
-| `windowsuup` | Entry point — `Client`, `NewClient`, `ClientOption` |
+| `windowsuup` | WU service entry point — `Client`, `NewClient`, `ClientOption` |
 | `windowsuup/api/builds` | `FetchBuilds` — build discovery via SyncUpdates SOAP |
 | `windowsuup/api/files` | `GetFiles` — file metadata and CDN URL resolution via GetExtendedUpdateInfo2 |
 | `windowsuup/api/download` | `DownloadFile` / `DownloadFiles` — streaming CDN downloads |
 | `windowsuup/api/diff` | `Diff` — client-side file-set comparison |
-| `windowsuup/api/esd` | `Catalog` — the Media Creation Tool ESD catalog (decompresses `products.cab`) |
 | `windowsuup/constants` | `Arch`, `Ring`, `SKU`, `Edition` constants |
-| `windowsuup/shared/models` | `Build`, `File`, `BuildDiff`, `FileDiff`, `ESDImage` types |
+| `windowsuup/shared/models` | `Build`, `File`, `BuildDiff`, `FileDiff` types |
 | `windowsuup/client` | Transport interface and concrete `Transport` implementation |
-| `internal/wuproto` | Windows Update SOAP protocol types (internal) |
-| `internal/wuproto/soap` | SOAP client: GetCookie → SyncUpdates → GetExtendedUpdateInfo2 |
+| `pkg/wuproto`, `pkg/wuproto/soap` | WU SOAP protocol types and client (GetCookie → SyncUpdates → GetExtendedUpdateInfo2) |
+| `esd` | ESD catalog entry point — `Client`, `NewClient` (self-contained: own `client`, `shared/models`, `mocks`) |
+| `esd/api/esd` | `Catalog` — fetch + parse the Media Creation Tool `products.cab` |
 
 ## Contributing
 

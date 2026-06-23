@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pkg/iso` — bootable ISO9660 + El Torito mastering and the UDF + El Torito
     bridge master.
   - `pkg/builder` — end-to-end ESD → bootable ISO orchestration (`BuildISO`).
-- `windowsuup/api/esd` — Media Creation Tool ESD catalog via `client.ESD`.
+- `esd` — a standalone Media Creation Tool ESD catalog client (`esd.NewClient`),
+  structured like `windowsuup` with its own transport, models, and mocks.
 - Examples `05_esd_catalog` through `09_esd_to_iso`.
 
 ### Changed
@@ -28,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved the imaging libraries from `windowsuup/{wim,iso,udf,builder}` and
   `windowsuup/internal/cab` to top-level `pkg/{wim,iso,udf,builder,cab}`; they are
   general-purpose and do not depend on the Windows Update service client.
+- Moved the WU SOAP protocol layer from `internal/wuproto` to `pkg/wuproto`
+  (now a public, reusable package).
+- Split the ESD catalog out of the `windowsuup` client into a separate top-level
+  `esd` client; it is no longer exposed as `windowsuup.Client.ESD`.
 
 ### Fixed
 

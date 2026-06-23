@@ -13,7 +13,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
 )
 
 func main() {

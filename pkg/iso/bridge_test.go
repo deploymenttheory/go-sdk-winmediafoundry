@@ -11,7 +11,7 @@ import (
 
 	mudf "github.com/mogaika/udf"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/iso"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/iso"
 )
 
 func writeFile(t *testing.T, root, rel string, content []byte) {

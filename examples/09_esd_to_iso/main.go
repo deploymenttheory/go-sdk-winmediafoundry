@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/builder"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/builder"
 )
 
 func main() {

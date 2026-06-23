@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/internal/cab"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/cab"
 )
 
 // TestParseRealCatalog exercises the full path the Catalog method uses, minus

@@ -10,7 +10,7 @@ import (
 
 	mudf "github.com/mogaika/udf"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/udf"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/udf"
 )
 
 func writeSrc(t *testing.T, root, rel string, content []byte) {

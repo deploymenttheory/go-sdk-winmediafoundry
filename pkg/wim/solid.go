@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim/lzms"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim/lzms"
 )
 
 // solidResourceMagic marks an offset-table entry as a solid (packed) resource

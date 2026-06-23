@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
 )
 
 func newE2EClient(t *testing.T) *windowsuup.Client {

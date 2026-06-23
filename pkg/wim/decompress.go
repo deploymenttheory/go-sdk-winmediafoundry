@@ -8,7 +8,8 @@ import (
 	"io"
 
 	"github.com/Microsoft/go-winio/wim/lzx"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim/lzms"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim/lzms"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim/xpress"
 )
 
 // The chunked resource reader below is adapted from the MIT-licensed
@@ -116,7 +117,15 @@ func (cr *chunkedReader) openChunk(n int) error {
 		}
 		cr.dec = d
 	case CompressionXPRESS:
-		return fmt.Errorf("%w: XPRESS", errCompressionUnsupported)
+		comp := make([]byte, compSize)
+		if _, err := io.ReadFull(section, comp); err != nil {
+			return fmt.Errorf("wim: read xpress chunk %d: %w", n, err)
+		}
+		dec, err := xpress.Decompress(comp, int(uncompSize))
+		if err != nil {
+			return fmt.Errorf("wim: xpress chunk %d: %w", n, err)
+		}
+		cr.dec = io.NopCloser(bytes.NewReader(dec))
 	case CompressionLZMS:
 		comp := make([]byte, compSize)
 		if _, err := io.ReadFull(section, comp); err != nil {

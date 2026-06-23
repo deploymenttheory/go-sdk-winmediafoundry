@@ -3,10 +3,11 @@
 // uses, plus helpers that recognise the boot images laid down by an extracted
 // "Windows Setup Media" image.
 //
-// Limitation: ISO9660 caps a single file at 4 GiB. Real Windows media with a
-// full install.wim/install.esd larger than that requires UDF, which is not yet
-// implemented here; such payloads must be split (install*.swm) or kept under the
-// limit. Boot files, boot.wim, and sub-4 GiB install.esd images work today.
+// Build masters a plain ISO9660+Joliet image, whose single-file size is capped
+// at 4 GiB by ISO9660. BuildWindowsUDF masters a UDF + El Torito "bridge" image
+// (using the sibling udf package) that removes that limit, so a full
+// install.wim/install.esd larger than 4 GiB fits — this is the format real
+// Windows media uses.
 package iso
 
 import (

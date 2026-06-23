@@ -226,22 +226,48 @@ Used with `filesapi.WithEdition(ed)` to filter files by Windows edition.
 | `EditionServerStandard` | Server Standard |
 | `EditionServerDatacenter` | Server Datacenter |
 
-## ISO Assembly
+## Windows Imaging (pure Go)
 
-Once ESD/CAB files are downloaded they can be assembled into a bootable ISO on Linux or macOS using standard open-source tools:
+The `pkg/` directory holds standalone, cross-platform Windows-imaging libraries
+with **no cgo and no external tools** — no wimlib, DISM, oscdimg, cabextract, or
+genisoimage. They turn a downloaded ESD into a bootable installation ISO entirely
+in Go.
 
-```bash
-# Install prerequisites (Debian/Ubuntu)
-sudo apt-get install cabextract wimtools chntpw genisoimage
+| Package | Description |
+|---|---|
+| `pkg/wim` | Read, extract, and write WIM/ESD images: container, blob/offset table, XML catalog, solid LZMS resources, dentry tree, extraction, and a multi-image WIM writer |
+| `pkg/wim/lzms` | LZMS decompressor (the ESD solid-resource format) |
+| `pkg/wim/xpress` | XPRESS (LZ77 + Huffman) decompressor |
+| `pkg/cab` | Microsoft Cabinet (`.cab`) reader with LZX and MSZIP decompression |
+| `pkg/udf` | UDF 1.02 (ECMA-167) writer — the file system Windows install media uses |
+| `pkg/iso` | Bootable ISO9660 + El Torito mastering, and the UDF + El Torito bridge master |
+| `pkg/builder` | End-to-end ESD → bootable ISO orchestration |
 
-# Install prerequisites (macOS with Homebrew)
-brew tap sidneys/homebrew
-brew install cabextract wimlib cdrtools sidneys/homebrew/chntpw
+LZX (for both CAB and WIM) reuses `github.com/Microsoft/go-winio/wim/lzx`;
+ISO9660 framing uses `github.com/diskfs/go-diskfs`.
+
+### Build a bootable ISO from an ESD
+
+```go
+import "github.com/deploymenttheory/go-sdk-windowsuup/pkg/builder"
+
+err := builder.BuildISO("install.esd", "Windows.iso",
+    builder.Options{VolumeID: "CCCOMA_X64FRE"})
 ```
 
-UUP dump's converter scripts (`uup_download_linux.sh`, `uup_download_macos.sh`) use these tools to turn the downloaded ESD/CAB set into a bootable ISO.
+This extracts the "Windows Setup Media" skeleton, rebuilds `sources/boot.wim` and
+`sources/install.wim` from the ESD's images, and masters a UDF + El Torito ISO
+that boots on both BIOS and UEFI. Because the media uses UDF, install images
+larger than the ISO9660 4 GiB-per-file limit are handled natively.
+
+See `examples/09_esd_to_iso`. To inspect or extract images without building an
+ISO, use `pkg/wim` directly (`examples/06_wim_info`, `07_wim_tree`,
+`08_wim_extract`).
 
 ## Package Layout
+
+The Windows Update **service client** lives under `windowsuup/`; the reusable
+**imaging libraries** live under `pkg/` (see above).
 
 | Package | Description |
 |---|---|
@@ -250,8 +276,9 @@ UUP dump's converter scripts (`uup_download_linux.sh`, `uup_download_macos.sh`) 
 | `windowsuup/api/files` | `GetFiles` — file metadata and CDN URL resolution via GetExtendedUpdateInfo2 |
 | `windowsuup/api/download` | `DownloadFile` / `DownloadFiles` — streaming CDN downloads |
 | `windowsuup/api/diff` | `Diff` — client-side file-set comparison |
+| `windowsuup/api/esd` | `Catalog` — the Media Creation Tool ESD catalog (decompresses `products.cab`) |
 | `windowsuup/constants` | `Arch`, `Ring`, `SKU`, `Edition` constants |
-| `windowsuup/shared/models` | `Build`, `File`, `BuildDiff`, `FileDiff` types |
+| `windowsuup/shared/models` | `Build`, `File`, `BuildDiff`, `FileDiff`, `ESDImage` types |
 | `windowsuup/client` | Transport interface and concrete `Transport` implementation |
 | `internal/wuproto` | Windows Update SOAP protocol types (internal) |
 | `internal/wuproto/soap` | SOAP client: GetCookie → SyncUpdates → GetExtendedUpdateInfo2 |

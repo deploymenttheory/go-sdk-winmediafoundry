@@ -41,11 +41,35 @@ func TestChunkedReaderPassthrough(t *testing.T) {
 	}
 }
 
+// TestChunkedReaderXPRESS reads a single-chunk XPRESS resource through the
+// chunked reader, validating the dispatch wiring. The chunk is the same
+// hand-built "ABC" vector used in the xpress package tests.
+func TestChunkedReaderXPRESS(t *testing.T) {
+	lens := make([]byte, 256)
+	lens[32] = 1 << 4       // symbol 'A' (65): length 1
+	lens[33] = 2 | (2 << 4) // symbols 'B' (66) and 'C' (67): length 2
+	chunk := append(lens, 0x00, 0x58)
+
+	// Single chunk: no chunk table precedes the data.
+	cr, err := newChunkedReader(bytes.NewReader(chunk), CompressionXPRESS, 32768, int64(len(chunk)), 3)
+	if err != nil {
+		t.Fatalf("newChunkedReader: %v", err)
+	}
+	defer cr.Close()
+	got, err := io.ReadAll(cr)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if string(got) != "ABC" {
+		t.Fatalf("got %q, want ABC", got)
+	}
+}
+
 func TestChunkedReaderUnsupported(t *testing.T) {
-	// A single compressed chunk with XPRESS is not yet implemented.
+	// An unknown compression algorithm is reported as unsupported.
 	const chunkSize = int64(8)
 	resource := make([]byte, 4) // one chunk, compressed (compSize 4 != uncomp 8)
-	_, err := newChunkedReader(bytes.NewReader(resource), CompressionXPRESS, chunkSize, 4, 8)
+	_, err := newChunkedReader(bytes.NewReader(resource), Compression(99), chunkSize, 4, 8)
 	if !errors.Is(err, errCompressionUnsupported) {
 		t.Fatalf("got %v, want errCompressionUnsupported", err)
 	}

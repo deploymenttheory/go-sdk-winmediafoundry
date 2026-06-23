@@ -17,7 +17,7 @@ import (
 	"fmt"
 
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/internal/cab"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/cab"
 	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
 	"resty.dev/v3"
 )

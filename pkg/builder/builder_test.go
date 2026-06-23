@@ -10,8 +10,8 @@ import (
 
 	mudf "github.com/mogaika/udf"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/builder"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/builder"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
 )
 
 func writeFile(t *testing.T, root, rel string, content []byte) {

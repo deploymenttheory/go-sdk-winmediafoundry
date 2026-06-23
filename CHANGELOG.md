@@ -9,11 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added xyz [@your_username](https://github.com/your_username)
+- Pure-Go Windows imaging libraries under `pkg/` (no cgo, no external tools):
+  - `pkg/wim` — read, extract, and write WIM/ESD images (container, blob table,
+    XML catalog, solid LZMS resources, dentry tree, extraction, multi-image
+    writer, and direct WIM→WIM image copy).
+  - `pkg/wim/lzms` and `pkg/wim/xpress` — LZMS and XPRESS decompressors; the
+    reader now handles all four WIM formats (none/XPRESS/LZX/LZMS).
+  - `pkg/cab` — Microsoft Cabinet reader with LZX and MSZIP decompression.
+  - `pkg/udf` — UDF 1.02 (ECMA-167) writer.
+  - `pkg/iso` — bootable ISO9660 + El Torito mastering and the UDF + El Torito
+    bridge master.
+  - `pkg/builder` — end-to-end ESD → bootable ISO orchestration (`BuildISO`).
+- `windowsuup/api/esd` — Media Creation Tool ESD catalog via `client.ESD`.
+- Examples `05_esd_catalog` through `09_esd_to_iso`.
+
+### Changed
+
+- Moved the imaging libraries from `windowsuup/{wim,iso,udf,builder}` and
+  `windowsuup/internal/cab` to top-level `pkg/{wim,iso,udf,builder,cab}`; they are
+  general-purpose and do not depend on the Windows Update service client.
 
 ### Fixed
 
-- Fixed zyx [@your_username](https://github.com/your_username)
+- WIM reader: a zero FILETIME (unset timestamp) decoded to a year-1601 time whose
+  `UnixNano` overflowed int64; it now maps to the zero `time.Time`.
 
 ## [1.1.0] - 2021-06-23
 

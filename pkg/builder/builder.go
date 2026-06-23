@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/iso"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/wim"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/iso"
+	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
 )
 
 // Options configures an ISO build.

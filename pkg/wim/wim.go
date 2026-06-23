@@ -1,11 +1,18 @@
-// Package wim reads Windows Imaging Format (WIM) files, including the solid
-// LZMS-compressed ESD variant distributed by Windows Update / the Media
-// Creation Tool.
+// Package wim reads, extracts, and writes Windows Imaging Format (WIM) files,
+// including the solid LZMS-compressed ESD variant distributed by Windows Update
+// and the Media Creation Tool.
 //
-// It is pure Go and cross-platform. The container layer (header, resource/blob
-// table, and the XML image catalog) needs no decompression, so images can be
-// enumerated immediately; extracting an image's contents additionally requires
-// the XPRESS/LZX/LZMS decompressors.
+// It is pure Go and cross-platform, with no cgo or external tools. The container
+// layer (header, resource/blob table, and the XML image catalog) needs no
+// decompression, so images can be enumerated immediately. Reading file contents
+// supports all four WIM compression formats — uncompressed, XPRESS, LZX, and
+// LZMS (including solid resources) — via the sibling lzms/xpress packages and
+// go-winio's LZX decoder.
+//
+// The package also writes images: Open/Images/OpenImage/ReadFile/ExtractImage
+// on the read side, and Writer (NewWriter/AddImage/AddImageFromWIM/Close) plus
+// CreateFromDir for producing uncompressed, multi-image WIMs such as boot.wim
+// and install.wim.
 package wim
 
 import (

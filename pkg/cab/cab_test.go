@@ -19,7 +19,7 @@ func TestExtractProductsCab(t *testing.T) {
 		wantSHA1 = "b0e49a9447c88e3aa6b4d188a77d93540699cf91"
 	)
 
-	data, err := os.ReadFile(filepath.Join("..", "..", "api", "esd", "testdata", "products.cab"))
+	data, err := os.ReadFile(filepath.Join("testdata", "products.cab"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}

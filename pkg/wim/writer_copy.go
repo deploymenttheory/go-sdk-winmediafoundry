@@ -1,22 +1,52 @@
 package wim
 
 import (
+	"cmp"
 	"crypto/sha1" //nolint:gosec // WIM blobs are content-addressed by SHA-1
+	"slices"
 )
 
 // AddImageFromWIM copies the 1-based image index from src into the WIM being
 // written, as a new image named name. Blob data is streamed directly from src
 // (no extraction to disk), deduplicated by SHA-1, and the directory tree is
 // rebuilt preserving file attributes and the three timestamps.
+//
+// Blobs are written in two passes: first the directory tree is planned (and the
+// set of unique blobs collected), then the blobs are copied in source-storage
+// order. The ordering is essential for solid resources: their chunks are large
+// and the reader caches only the most-recently-decompressed chunk, so reading
+// blobs in tree order (which does not match the solid layout) would
+// re-decompress the same chunks repeatedly. Reading in ascending solid offset
+// decompresses each chunk exactly once.
 func (w *Writer) AddImageFromWIM(src *WIM, index int, name string) error {
 	root, err := src.OpenImage(index)
 	if err != nil {
 		return err
 	}
-	rec := imageRec{name: name}
-	node, err := w.copyNode(src, root, &rec)
-	if err != nil {
+	if err := src.loadOffsetTable(); err != nil {
 		return err
+	}
+
+	rec := imageRec{name: name}
+	var pending []*File // unique, not-yet-written blobs to copy, in tree order
+	inBatch := make(map[[20]byte]bool)
+	node := w.planNode(src, root, &rec, &pending, inBatch)
+
+	for _, f := range sortBlobsBySource(src, pending) {
+		if w.seen[f.Hash] {
+			continue
+		}
+		data, err := src.ReadFile(f)
+		if err != nil {
+			return err
+		}
+		w.seen[f.Hash] = true
+		offset := w.pos
+		if err := w.write(data); err != nil {
+			return err
+		}
+		w.blobs = append(w.blobs, blobRec{hash: f.Hash, offset: offset, size: int64(len(data))})
+		rec.totalBytes += int64(len(data))
 	}
 
 	meta := buildMetadata(node)
@@ -30,9 +60,11 @@ func (w *Writer) AddImageFromWIM(src *WIM, index int, name string) error {
 	return nil
 }
 
-// copyNode converts a source File into a writeNode, writing its blob (for
-// regular files) into the destination WIM if not already present.
-func (w *Writer) copyNode(src *WIM, f *File, rec *imageRec) (*writeNode, error) {
+// planNode converts a source File into a writeNode (preserving attributes and
+// timestamps) and collects the unique regular-file blobs that still need to be
+// written. It performs no blob reads; the actual copy happens afterwards in
+// source order.
+func (w *Writer) planNode(src *WIM, f *File, rec *imageRec, pending *[]*File, inBatch map[[20]byte]bool) *writeNode {
 	node := &writeNode{
 		name:       f.Name,
 		isDir:      f.IsDir(),
@@ -46,29 +78,55 @@ func (w *Writer) copyNode(src *WIM, f *File, rec *imageRec) (*writeNode, error) 
 	if f.IsDir() {
 		rec.dirCount++
 		for _, c := range f.Children() {
-			child, err := w.copyNode(src, c, rec)
-			if err != nil {
-				return nil, err
-			}
-			node.children = append(node.children, child)
+			node.children = append(node.children, w.planNode(src, c, rec, pending, inBatch))
 		}
-		return node, nil
+		return node
 	}
 
 	rec.fileCount++
-	if isZeroHash(f.Hash) || w.seen[f.Hash] {
-		return node, nil // empty file, or a blob already written for this content
+	if isZeroHash(f.Hash) || w.seen[f.Hash] || inBatch[f.Hash] {
+		return node // empty file, or a blob already written / already queued
 	}
-	data, err := src.ReadFile(f)
-	if err != nil {
-		return nil, err
+	inBatch[f.Hash] = true
+	*pending = append(*pending, f)
+	return node
+}
+
+// sortBlobsBySource orders files by where their content is stored: blobs in the
+// same solid resource are sorted by ascending uncompressed offset (so the
+// solid's one-chunk cache is hit sequentially), with each distinct solid kept
+// contiguous; standalone-resource blobs sort after the solids in their original
+// order. The sort is stable, so blobs with equal keys keep tree order.
+func sortBlobsBySource(src *WIM, files []*File) []*File {
+	// Assign each distinct solid a contiguous group index in first-seen order.
+	solidIdx := make(map[*solidResource]int)
+	for _, f := range files {
+		if loc, ok := src.blobs[f.Hash]; ok && loc.solid != nil {
+			if _, seen := solidIdx[loc.solid]; !seen {
+				solidIdx[loc.solid] = len(solidIdx)
+			}
+		}
 	}
-	w.seen[f.Hash] = true
-	offset := w.pos
-	if err := w.write(data); err != nil {
-		return nil, err
+	standaloneGroup := len(solidIdx)
+
+	key := func(f *File) (int, int64) {
+		loc, ok := src.blobs[f.Hash]
+		if !ok {
+			return standaloneGroup, 0
+		}
+		if loc.solid != nil {
+			return solidIdx[loc.solid], loc.offset
+		}
+		return standaloneGroup, 0
 	}
-	w.blobs = append(w.blobs, blobRec{hash: f.Hash, offset: offset, size: int64(len(data))})
-	rec.totalBytes += int64(len(data))
-	return node, nil
+
+	slices.SortStableFunc(files, func(a, b *File) int {
+		ga, oa := key(a)
+		gb, ob := key(b)
+		if ga != gb {
+			return cmp.Compare(ga, gb)
+		}
+		return cmp.Compare(oa, ob)
+	})
+	return files
 }

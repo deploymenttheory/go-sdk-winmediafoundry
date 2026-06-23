@@ -108,11 +108,20 @@ func (s *solidResource) decompressChunk(i int) ([]byte, error) {
 	case CompressionNone:
 		out = comp
 	case CompressionLZMS:
-		dec, err := lzms.Decompress(comp, int(uncompSize))
-		if err != nil {
-			return nil, fmt.Errorf("wim: solid chunk %d: %w", i, err)
+		if compLen == uncompSize {
+			// Within a compressed resource, a chunk whose stored size equals its
+			// uncompressed size was stored uncompressed (LZMS did not shrink it);
+			// its bytes are the data verbatim. Decompressing them as LZMS would
+			// produce garbage. This mirrors the standalone-resource reader
+			// (decompress.go).
+			out = comp
+		} else {
+			dec, err := lzms.Decompress(comp, int(uncompSize))
+			if err != nil {
+				return nil, fmt.Errorf("wim: solid chunk %d: %w", i, err)
+			}
+			out = dec
 		}
-		out = dec
 	default:
 		return nil, fmt.Errorf("%w: solid %s", errCompressionUnsupported, s.comp)
 	}

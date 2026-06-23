@@ -10,16 +10,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/deploymenttheory/winmediafoundry/pkg/progress_counter"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
 	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/tools/download_counter"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )
 
 // DownloadProgressCallback is called periodically during a download with the
 // current byte count, total expected size, and elapsed time. It matches the
-// signature of download_counter.Bar.Callback so callers can pass that directly
+// signature of progress_counter.Bar.Callback so callers can pass that directly
 // via WithProgressCallback, or use the higher-level WithProgress option.
 type DownloadProgressCallback func(fileName string, written, total int64, elapsed time.Duration)
 
@@ -35,7 +35,7 @@ type DownloadOption func(*downloadConfig)
 // Pass nil to write to os.Stderr.
 func WithProgress(w io.Writer) DownloadOption {
 	return func(cfg *downloadConfig) {
-		bar := download_counter.New(w)
+		bar := progress_counter.New(w)
 		cfg.progressCallback = bar.Callback
 	}
 }

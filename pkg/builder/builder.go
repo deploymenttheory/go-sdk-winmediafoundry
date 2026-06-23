@@ -10,11 +10,13 @@ package builder
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/deploymenttheory/winmediafoundry/pkg/iso"
+	"github.com/deploymenttheory/winmediafoundry/pkg/progress_counter"
 	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
 )
 
@@ -24,6 +26,9 @@ type Options struct {
 	// WorkDir is the scratch directory for the media tree and temporary
 	// extractions. Empty uses a fresh os.MkdirTemp directory (removed on success).
 	WorkDir string
+	// Progress, when non-nil, receives a terminal progress bar for the slow
+	// phases (rebuilding boot.wim / install.wim). nil builds silently.
+	Progress io.Writer
 }
 
 // BuildISO assembles a bootable Windows ISO at outISOPath from the ESD/WIM at
@@ -83,6 +88,7 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 		defer os.RemoveAll(work)
 	}
 
+	progressf(opts.Progress, "Extracting setup media...\n")
 	media := filepath.Join(work, "media")
 	if err := w.ExtractImage(classes.setupMedia, media); err != nil {
 		return fmt.Errorf("builder: extract setup media: %w", err)
@@ -93,15 +99,16 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 		return fmt.Errorf("builder: %w", err)
 	}
 
-	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim")); err != nil {
+	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim"), opts.Progress); err != nil {
 		return fmt.Errorf("builder: boot.wim: %w", err)
 	}
 	if len(classes.editions) > 0 {
-		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim")); err != nil {
+		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim"), opts.Progress); err != nil {
 			return fmt.Errorf("builder: install.wim: %w", err)
 		}
 	}
 
+	progressf(opts.Progress, "Mastering ISO...\n")
 	if err := iso.BuildWindowsUDF(media, outISOPath, opts.VolumeID); err != nil {
 		return err
 	}
@@ -110,15 +117,23 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 
 // buildWIM writes the given source images as the images of a new uncompressed
 // WIM at outPath, preserving order. Images are copied directly from the source
-// WIM (no extraction to disk), which preserves file attributes/timestamps.
-func buildWIM(w *wim.WIM, indices []int, outPath string) error {
+// WIM (no extraction to disk), which preserves file attributes/timestamps. When
+// progress is non-nil, the (slow) write is reported via a progress bar sized to
+// the images' uncompressed bytes.
+func buildWIM(w *wim.WIM, indices []int, outPath string, progress io.Writer) error {
 	out, err := os.Create(outPath) //nolint:gosec // caller-controlled path
 	if err != nil {
 		return err
 	}
 	defer out.Close()
 
-	ww, err := wim.NewWriter(out)
+	var dst io.WriteSeeker = out
+	if progress != nil {
+		bar := progress_counter.NewWithLabel(progress, "Building")
+		dst = bar.WriteSeeker(filepath.Base(outPath), out, sumImageBytes(w, indices))
+	}
+
+	ww, err := wim.NewWriter(dst)
 	if err != nil {
 		return err
 	}
@@ -128,6 +143,30 @@ func buildWIM(w *wim.WIM, indices []int, outPath string) error {
 		}
 	}
 	return ww.Close()
+}
+
+// sumImageBytes totals the uncompressed size of the given images, used as the
+// progress-bar denominator. Returns 0 when unknown (the bar then shows bytes +
+// speed only).
+func sumImageBytes(w *wim.WIM, indices []int) int64 {
+	want := make(map[int]bool, len(indices))
+	for _, idx := range indices {
+		want[idx] = true
+	}
+	var total int64
+	for _, im := range w.Images() {
+		if want[im.Index] {
+			total += im.TotalBytes
+		}
+	}
+	return total
+}
+
+// progressf writes a status line to w when it is non-nil.
+func progressf(w io.Writer, format string, args ...any) {
+	if w != nil {
+		fmt.Fprintf(w, format, args...)
+	}
 }
 
 func imageName(w *wim.WIM, index int) string {

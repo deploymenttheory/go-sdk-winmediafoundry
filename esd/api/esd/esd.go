@@ -18,7 +18,6 @@ import (
 
 	"github.com/deploymenttheory/winmediafoundry/esd/client"
 	"github.com/deploymenttheory/winmediafoundry/pkg/cab"
-	"github.com/deploymenttheory/winmediafoundry/esd/shared/models"
 	"resty.dev/v3"
 )
 
@@ -62,7 +61,7 @@ func WithProduct(p Product) CatalogOption {
 
 // Catalog fetches and parses Microsoft's ESD catalog. The returned
 // *resty.Response is from the products.cab fetch.
-func (s *Service) Catalog(ctx context.Context, opts ...CatalogOption) (*models.ESDCatalog, *resty.Response, error) {
+func (s *Service) Catalog(ctx context.Context, opts ...CatalogOption) (*ESDCatalog, *resty.Response, error) {
 	cfg := &catalogConfig{product: Windows11}
 	for _, o := range opts {
 		o(cfg)

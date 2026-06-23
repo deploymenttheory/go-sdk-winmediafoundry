@@ -49,8 +49,8 @@ func lruBytes() []byte {
 // the first has odd length, exercising the 16-bit realignment (unaligned) path
 // between blocks.
 func TestLZXTwoUncompressedBlocks(t *testing.T) {
-	d0 := []byte("ABCDE")  // 5 bytes (odd)
-	d1 := []byte("FGHIJ")  // 5 bytes
+	d0 := []byte("ABCDE") // 5 bytes (odd)
+	d1 := []byte("FGHIJ") // 5 bytes
 
 	// Block 0 header: E8 bit + type(uncompressed) + 24-bit size.
 	var b0 []int
@@ -68,7 +68,7 @@ func TestLZXTwoUncompressedBlocks(t *testing.T) {
 	chunk := append([]byte{}, packLZXWords(b0)...)
 	chunk = append(chunk, lruBytes()...)
 	chunk = append(chunk, d0...)
-	chunk = append(chunk, 0)               // odd-length realignment padding byte
+	chunk = append(chunk, 0) // odd-length realignment padding byte
 	chunk = append(chunk, packLZXWords(b1)...)
 	chunk = append(chunk, lruBytes()...)
 	chunk = append(chunk, d1...)
@@ -82,12 +82,43 @@ func TestLZXTwoUncompressedBlocks(t *testing.T) {
 	}
 }
 
+// TestLZXUncompressedTruncated declares an uncompressed block but supplies too
+// few bytes for the R0/R1/R2 header, exercising that error path.
+func TestLZXUncompressedTruncated(t *testing.T) {
+	var bits []int
+	bits = appendBits(bits, 0, 1) // E8 header bit
+	bits = appendBits(bits, 3, 3) // uncompressed block
+	bits = appendBits(bits, 100>>8, 16)
+	bits = appendBits(bits, 100&0xff, 8)
+	chunk := packLZXWords(bits) // header only; no R0/R1/R2 bytes follow
+
+	if _, err := lzxDecompress([][]byte{chunk}, []int{100}, 15); err == nil {
+		t.Fatal("expected error for truncated uncompressed block header")
+	}
+}
+
+// TestLZXInvalidBlockType uses an unrecognized block type, exercising the
+// block-header error path.
+func TestLZXInvalidBlockType(t *testing.T) {
+	var bits []int
+	bits = appendBits(bits, 0, 1) // E8 header bit
+	bits = appendBits(bits, 0, 3) // block type 0 (invalid)
+	bits = appendBits(bits, 32>>8, 16)
+	bits = appendBits(bits, 32&0xff, 8)
+	chunk := packLZXWords(bits)
+	chunk = append(chunk, make([]byte, 32)...)
+
+	if _, err := lzxDecompress([][]byte{chunk}, []int{32}, 15); err == nil {
+		t.Fatal("expected error for invalid block type")
+	}
+}
+
 // TestLZXTruncatedStream feeds a verbatim block header with too few bytes to read
 // the trees, exercising the unexpected-EOF path.
 func TestLZXTruncatedStream(t *testing.T) {
 	var bits []int
-	bits = appendBits(bits, 0, 1)      // E8 header bit
-	bits = appendBits(bits, 1, 3)      // verbatim block
+	bits = appendBits(bits, 0, 1) // E8 header bit
+	bits = appendBits(bits, 1, 3) // verbatim block
 	bits = appendBits(bits, 256>>8, 16)
 	bits = appendBits(bits, 256&0xff, 8)
 	chunk := packLZXWords(bits) // header only; no tree bytes follow

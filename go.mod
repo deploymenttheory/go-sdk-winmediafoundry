@@ -3,6 +3,7 @@ module github.com/deploymenttheory/go-sdk-windowsuup
 go 1.25.0
 
 require (
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.28.0
 	resty.dev/v3 v3.0.0-rc.2

@@ -94,11 +94,11 @@ func TestLZXUncompressedBlock(t *testing.T) {
 	n := len(data)
 
 	var bits []int
-	bits = appendBits(bits, 0, 1)        // E8 header bit: no translation
-	bits = appendBits(bits, 3, 3)        // block type: uncompressed
-	bits = appendBits(bits, n>>8, 16)    // block size, high 16 bits
-	bits = appendBits(bits, n&0xff, 8)   // block size, low 8 bits
-	header := packLZXWords(bits)         // header + alignment padding
+	bits = appendBits(bits, 0, 1)      // E8 header bit: no translation
+	bits = appendBits(bits, 3, 3)      // block type: uncompressed
+	bits = appendBits(bits, n>>8, 16)  // block size, high 16 bits
+	bits = appendBits(bits, n&0xff, 8) // block size, low 8 bits
+	header := packLZXWords(bits)       // header + alignment padding
 
 	lru := make([]byte, 12) // R0,R1,R2
 	binary.LittleEndian.PutUint32(lru[0:4], 1)
@@ -120,8 +120,8 @@ func TestLZXCorruptInput(t *testing.T) {
 	// A verbatim block header followed by zeroed tree data decodes to an
 	// invalid (empty) main tree, which must surface as an error.
 	var bits []int
-	bits = appendBits(bits, 0, 1)     // E8 header bit
-	bits = appendBits(bits, 1, 3)     // block type: verbatim
+	bits = appendBits(bits, 0, 1) // E8 header bit
+	bits = appendBits(bits, 1, 3) // block type: verbatim
 	bits = appendBits(bits, 64>>8, 16)
 	bits = appendBits(bits, 64&0xff, 8)
 	chunk := packLZXWords(bits)

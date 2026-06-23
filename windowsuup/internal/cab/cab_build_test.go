@@ -29,10 +29,10 @@ func buildUncompressedCab(name string, content []byte, withReserve bool) []byte 
 	copy(buf, "MSCF")
 	le.PutUint32(buf[8:], uint32(total))     // cbCabinet
 	le.PutUint32(buf[16:], uint32(coffFile)) // coffFiles
-	buf[24], buf[25] = 3, 1                   // version
-	le.PutUint16(buf[26:], 1)                 // cFolders
-	le.PutUint16(buf[28:], 1)                 // cFiles
-	le.PutUint16(buf[30:], flags)             // flags
+	buf[24], buf[25] = 3, 1                  // version
+	le.PutUint16(buf[26:], 1)                // cFolders
+	le.PutUint16(buf[28:], 1)                // cFiles
+	le.PutUint16(buf[30:], flags)            // flags
 	// reserve area (4 bytes of zeros) sits at offset 36 when present.
 
 	// CFFOLDER
@@ -119,6 +119,26 @@ func TestExtractFileExceedsFolder(t *testing.T) {
 	le.PutUint32(cabBytes[coffFile:], 0xffff)
 	if _, err := Extract(cabBytes); !errors.Is(err, errCorruptCabinet) {
 		t.Fatalf("got %v, want errCorruptCabinet", err)
+	}
+}
+
+func TestExtractUnterminatedFileName(t *testing.T) {
+	le := binary.LittleEndian
+	// header(36) + CFFOLDER(8) + CFFILE(16) + name bytes with no NUL terminator.
+	coffFile := 36 + 8
+	buf := make([]byte, coffFile+16+3)
+	copy(buf, "MSCF")
+	le.PutUint32(buf[8:], uint32(len(buf)))
+	le.PutUint32(buf[16:], uint32(coffFile))
+	le.PutUint16(buf[26:], 1) // cFolders
+	le.PutUint16(buf[28:], 1) // cFiles
+	// CFFOLDER: no CFDATA blocks.
+	le.PutUint32(buf[36:], uint32(len(buf))) // coffCabStart (unused, cCFData=0)
+	le.PutUint16(buf[40:], 0)                // cCFData
+	copy(buf[coffFile+16:], "abc")           // name, never terminated
+
+	if _, err := Extract(buf); !errors.Is(err, errTruncated) {
+		t.Fatalf("got %v, want errTruncated", err)
 	}
 }
 

@@ -1,6 +1,6 @@
 package windowsuup
 
-import "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+import "github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 
 // DownloadBuildOption configures a DownloadBuild or FetchLatestAndDownload call.
 type DownloadBuildOption func(*downloadBuildConfig)

@@ -1,22 +1,36 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-windowsuup)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-windowsuup)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/winmediafoundry)](https://goreportcard.com/report/github.com/deploymenttheory/winmediafoundry)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/go-sdk-windowsuup)](https://github.com/deploymenttheory/go-sdk-windowsuup)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/winmediafoundry)](https://github.com/deploymenttheory/winmediafoundry)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
-## Getting Started with `go-sdk-windowsuup`
+## Overview
 
-`go-sdk-windowsuup` is a pure Go client library for Microsoft's Windows Update SOAP protocol. It makes direct SOAP calls to `fe3.delivery.mp.microsoft.com` and `fe3cr.delivery.mp.microsoft.com`. Use it to discover available Windows builds by ring and architecture, resolve pre-signed CDN download URLs, stream ESD/CAB files to disk, and compare file sets between builds.
+A pure-Go, cross-platform toolkit for **acquiring and building Windows
+installation media** — with no cgo and no external tools (no wimlib, DISM,
+oscdimg, or cabextract). It has two layers:
 
-## Go Prerequisites
+- **Windows Update service client** (`windowsuup/`) — makes direct SOAP calls to
+  `fe3.delivery.mp.microsoft.com` / `fe3cr.delivery.mp.microsoft.com` to discover
+  Windows builds by ring and architecture, resolve pre-signed CDN URLs, stream
+  ESD/CAB files to disk, and diff file sets between builds; plus the Media
+  Creation Tool ESD catalog (`client.ESD`).
+- **Windows imaging libraries** (`pkg/`) — read, extract, and write WIM/ESD
+  images (LZMS / XPRESS / LZX), read CAB archives, write UDF file systems, and
+  master bootable ISO9660 + El Torito images, culminating in a one-call
+  ESD → bootable ISO builder.
 
-- Go 1.23 or later
-- Outbound HTTPS (port 443) to `fe3.delivery.mp.microsoft.com` and `fe3cr.delivery.mp.microsoft.com`
-- No certificates required - the SDK handles the Microsoft CA chain for you.
+## Prerequisites
+
+- Go 1.25 or later
+- For the Windows Update client: outbound HTTPS (port 443) to
+  `fe3.delivery.mp.microsoft.com` and `fe3cr.delivery.mp.microsoft.com` (no
+  certificates required — the Microsoft CA chain is handled for you). The `pkg/`
+  imaging libraries work entirely offline.
 
 ## Installation
 
 ```bash
-go get github.com/deploymenttheory/go-sdk-windowsuup
+go get github.com/deploymenttheory/winmediafoundry
 ```
 
 ## Usage
@@ -29,6 +43,11 @@ Runnable examples are in the `examples/` directory:
 | `examples/02_get_files` | Resolve pre-signed CDN download URLs for a build's files |
 | `examples/03_download` | Stream ESD/CAB files concurrently to a local directory |
 | `examples/04_diff` | Compare file sets between two builds |
+| `examples/05_esd_catalog` | List the Media Creation Tool ESD catalog |
+| `examples/06_wim_info` | Print a WIM/ESD's header and image list |
+| `examples/07_wim_tree` | List an image's directory tree |
+| `examples/08_wim_extract` | Extract an image's files to a directory |
+| `examples/09_esd_to_iso` | Build a bootable ISO from an ESD |
 
 Run any example directly:
 
@@ -39,7 +58,7 @@ go run ./examples/01_fetch_builds
 ## Creating a Client
 
 ```go
-import "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
+import "github.com/deploymenttheory/winmediafoundry/windowsuup"
 
 client, err := windowsuup.NewClient()
 if err != nil {
@@ -63,7 +82,7 @@ import (
     "time"
     "go.uber.org/zap"
 
-    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
+    "github.com/deploymenttheory/winmediafoundry/windowsuup"
 )
 
 logger, _ := zap.NewDevelopment()
@@ -81,8 +100,8 @@ client, err := windowsuup.NewClient(
 
 ```go
 import (
-    buildsapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/builds"
-    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+    buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
+    "github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 )
 
 builds, _, err := client.Builds.FetchBuilds(ctx,
@@ -111,8 +130,8 @@ Each `models.Build` in the result includes `UUID`, `Revision`, `Title`, `Build` 
 
 ```go
 import (
-    filesapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
-    "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+    filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
+    "github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 )
 
 files, _, err := client.Files.GetFiles(ctx, build,
@@ -169,9 +188,32 @@ fmt.Printf("+%d -%d ~%d =%d\n",
 | `Changed` | `[]models.FileDiff` | Files present in both but with differing content |
 | `Unchanged` | `int` | Count of files identical in both builds |
 
+### ESD Catalog
+
+`client.ESD.Catalog` fetches Microsoft's Media Creation Tool catalog
+(`products.cab`), decompresses it (pure-Go LZX), and returns the list of full
+installation ESDs with direct CDN URLs and SHA-1 hashes.
+
+```go
+cat, _, err := client.ESD.Catalog(ctx, esd.WithProduct(esd.Windows11))
+pro := cat.Filter("Professional", "x64", "en-us")
+fmt.Println(pro[0].FileName, pro[0].URL)
+```
+
+### End to end: ESD → bootable ISO
+
+```go
+// 1. Resolve and download an ESD (see ESD Catalog above), then:
+err := builder.BuildISO("install.esd", "Windows.iso",
+    builder.Options{VolumeID: "CCCOMA_X64FRE"})
+```
+
+See [Windows Imaging](#windows-imaging-pure-go) for the underlying `pkg/`
+libraries.
+
 ## Constants Reference
 
-All constants live in `github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants`.
+All constants live in `github.com/deploymenttheory/winmediafoundry/windowsuup/constants`.
 
 ### Architectures
 
@@ -249,7 +291,7 @@ ISO9660 framing uses `github.com/diskfs/go-diskfs`.
 ### Build a bootable ISO from an ESD
 
 ```go
-import "github.com/deploymenttheory/go-sdk-windowsuup/pkg/builder"
+import "github.com/deploymenttheory/winmediafoundry/pkg/builder"
 
 err := builder.BuildISO("install.esd", "Windows.iso",
     builder.Options{VolumeID: "CCCOMA_X64FRE"})

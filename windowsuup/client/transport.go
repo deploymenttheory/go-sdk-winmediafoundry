@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto/soap"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/internal/wuproto/soap"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

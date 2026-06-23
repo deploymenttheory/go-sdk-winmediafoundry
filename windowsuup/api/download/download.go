@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/tools/download_counter"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/tools/download_counter"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

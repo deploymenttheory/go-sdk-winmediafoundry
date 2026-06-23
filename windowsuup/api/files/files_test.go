@@ -3,8 +3,8 @@ package files
 import (
 	"testing"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 	"github.com/stretchr/testify/assert"
 )
 

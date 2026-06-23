@@ -13,7 +13,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
+	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
 )
 
 func main() {

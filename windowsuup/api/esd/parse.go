@@ -4,7 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 )
 
 // xmlCatalog mirrors the structure of Microsoft's products.xml:

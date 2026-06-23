@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	buildsapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/builds"
-	filesapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
+	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
+	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 )
 
 // DownloadBuild resolves CDN download URLs for build's files, applies the

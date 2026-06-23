@@ -1,4 +1,4 @@
-module github.com/deploymenttheory/go-sdk-windowsuup
+module github.com/deploymenttheory/winmediafoundry
 
 go 1.25.0
 

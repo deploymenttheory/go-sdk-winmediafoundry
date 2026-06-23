@@ -2,7 +2,7 @@
 // Update SOAP protocol layer.
 //
 // The production implementation lives in internal/wuproto/soap. This package
-// is internal to go-sdk-windowsuup and not importable by external modules.
+// is internal to winmediafoundry and not importable by external modules.
 package wuproto
 
 import (

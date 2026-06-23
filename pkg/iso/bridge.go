@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/udf"
+	"github.com/deploymenttheory/winmediafoundry/pkg/udf"
 )
 
 // Bridge image layout: ISO9660 descriptors and the El Torito boot catalog live

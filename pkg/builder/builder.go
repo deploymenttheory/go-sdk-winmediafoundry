@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/iso"
-	"github.com/deploymenttheory/go-sdk-windowsuup/pkg/wim"
+	"github.com/deploymenttheory/winmediafoundry/pkg/iso"
+	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
 )
 
 // Options configures an ISO build.

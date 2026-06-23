@@ -5,7 +5,7 @@ package models
 import (
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 )
 
 // Build represents a Windows Update discovered from Microsoft's update service.

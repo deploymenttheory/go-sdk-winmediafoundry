@@ -93,7 +93,7 @@ func domainEntityID() []byte {
 // implEntityID is this writer's implementation identifier, with a UDF
 // implementation suffix (OS class/identifier left unspecified).
 func implEntityID() []byte {
-	return entityID("*go-sdk-windowsuup", make([]byte, 8))
+	return entityID("*winmediafoundry", make([]byte, 8))
 }
 
 func utf16Encode(s string) []uint16 { return utf16.Encode([]rune(s)) }

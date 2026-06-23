@@ -13,10 +13,10 @@ import (
 	"fmt"
 	"log"
 
-	buildsapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/builds"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup"
 )
 
 func main() {

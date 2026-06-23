@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

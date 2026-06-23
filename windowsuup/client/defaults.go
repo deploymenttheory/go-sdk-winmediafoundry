@@ -4,7 +4,7 @@ import "time"
 
 const (
 	// UserAgentBase is the base string for the SDK user-agent header.
-	UserAgentBase = "go-sdk-windowsuup"
+	UserAgentBase = "winmediafoundry"
 )
 
 // HTTP client defaults.

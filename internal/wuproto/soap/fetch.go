@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
+	"github.com/deploymenttheory/winmediafoundry/internal/wuproto"
 )
 
 // parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo
@@ -464,7 +464,12 @@ func BuildProductsString(arch, ring, build string, sku int) string {
 	}
 
 	products := []string{
-		fmt.Sprintf("PN=%s&Branch=%s&PrimaryOSProduct=1&Repairable=1&V=%s&ReofferUpdate=1", pn, branch, build),
+		fmt.Sprintf(
+			"PN=%s&Branch=%s&PrimaryOSProduct=1&Repairable=1&V=%s&ReofferUpdate=1",
+			pn,
+			branch,
+			build,
+		),
 		"PN=Adobe.Flash." + arch + "&Repairable=1&V=0.0.0.0",
 		"PN=Microsoft.Edge.Stable." + arch + "&Repairable=1&V=0.0.0.0",
 		"PN=Microsoft.NETFX." + arch + "&V=0.0.0.0",

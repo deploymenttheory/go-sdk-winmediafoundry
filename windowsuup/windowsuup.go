@@ -27,12 +27,12 @@ package windowsuup
 import (
 	"fmt"
 
-	buildsapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/builds"
-	diffapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/diff"
-	downloadapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/download"
-	esdapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/esd"
-	filesapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
+	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
+	diffapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/diff"
+	downloadapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/download"
+	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
+	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
 	"go.uber.org/zap"
 )
 

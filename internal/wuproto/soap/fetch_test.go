@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto"
+	"github.com/deploymenttheory/winmediafoundry/internal/wuproto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

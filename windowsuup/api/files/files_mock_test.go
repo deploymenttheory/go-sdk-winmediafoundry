@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files"
-	filesmocks "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/files/mocks"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/mocks"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
+	filesmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files/mocks"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

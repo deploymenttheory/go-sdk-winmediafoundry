@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	winmocks "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/mocks"
+	winmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
 )
 
 func loadCab(t *testing.T) []byte {

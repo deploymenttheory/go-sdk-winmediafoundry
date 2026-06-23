@@ -14,8 +14,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup"
-	esdapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/esd"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup"
+	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
 )
 
 func main() {

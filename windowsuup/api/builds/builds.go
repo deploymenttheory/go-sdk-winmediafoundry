@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto/soap"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/client"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/shared/models"
+	"github.com/deploymenttheory/winmediafoundry/internal/wuproto/soap"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
 	"resty.dev/v3"
 )
 

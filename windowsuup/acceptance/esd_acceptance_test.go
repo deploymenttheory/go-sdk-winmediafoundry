@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	esdapi "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/api/esd"
+	esdapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/esd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

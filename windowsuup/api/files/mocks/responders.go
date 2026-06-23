@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/internal/wuproto/soap"
-	windowsuupmocks "github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/mocks"
+	"github.com/deploymenttheory/winmediafoundry/internal/wuproto/soap"
+	windowsuupmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
 )
 
 func fixturesDir() string {

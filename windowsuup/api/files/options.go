@@ -3,7 +3,7 @@ package files
 import (
 	"strings"
 
-	"github.com/deploymenttheory/go-sdk-windowsuup/windowsuup/constants"
+	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
 )
 
 // FileOption configures a GetFiles call.

@@ -27,11 +27,11 @@ package windowsuup
 import (
 	"fmt"
 
-	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-	diffapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/diff"
-	downloadapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/download"
-	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
+	buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+	diffapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/diff"
+	downloadapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/download"
+	filesapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/client"
 	"go.uber.org/zap"
 )
 

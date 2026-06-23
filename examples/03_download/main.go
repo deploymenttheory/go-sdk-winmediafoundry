@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"log"
 
-	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+	filesapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
 )
 
 func main() {

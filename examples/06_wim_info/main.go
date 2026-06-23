@@ -12,7 +12,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim"
 )
 
 func main() {

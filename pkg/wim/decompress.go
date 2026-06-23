@@ -8,8 +8,8 @@ import (
 	"io"
 
 	"github.com/Microsoft/go-winio/wim/lzx"
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim/lzms"
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim/xpress"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim/lzms"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim/xpress"
 )
 
 // The chunked resource reader below is adapted from the MIT-licensed

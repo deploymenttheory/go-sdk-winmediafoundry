@@ -11,7 +11,7 @@ images, and master bootable ISOs — all pure Go, no external tools.
 go build -o winmediafoundry ./cli
 
 # or install the binary (named "cli") onto your PATH
-go install github.com/deploymenttheory/winmediafoundry/cli@latest
+go install github.com/deploymenttheory/go-sdk-winmediafoundry/cli@latest
 ```
 
 ## Configuration

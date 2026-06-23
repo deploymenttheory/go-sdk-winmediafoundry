@@ -1,7 +1,7 @@
 package builds
 
 import (
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 )
 
 // FetchOption configures a FetchBuilds call.

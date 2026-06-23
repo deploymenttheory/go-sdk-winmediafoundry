@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wuproto"
 )
 
 // File exclusion patterns (from UUP dump PHP source, get.php).

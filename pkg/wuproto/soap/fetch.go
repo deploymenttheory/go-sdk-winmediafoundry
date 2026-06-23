@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wuproto"
 )
 
 // parseExtBlob parses the HTML-escaped <Xml> blob from an ExtendedUpdateInfo

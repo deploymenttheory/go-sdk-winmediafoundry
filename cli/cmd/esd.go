@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
+	esdapi "github.com/deploymenttheory/go-sdk-winmediafoundry/esd/api/esd"
 )
 
 var esdCmd = &cobra.Command{

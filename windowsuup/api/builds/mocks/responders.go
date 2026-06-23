@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wuproto/soap"
-	windowsuupmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wuproto/soap"
+	windowsuupmocks "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/mocks"
 )
 
 // fixturesDir returns the path to the shared testdata/soap directory relative

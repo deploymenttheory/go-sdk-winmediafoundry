@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 	"resty.dev/v3"
 )
 

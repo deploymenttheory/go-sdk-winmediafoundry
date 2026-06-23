@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deploymenttheory/winmediafoundry/esd/client"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd/client"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

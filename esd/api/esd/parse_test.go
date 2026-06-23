@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/cab"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/cab"
 )
 
 // TestParseRealCatalog exercises the full path the Catalog method uses, minus

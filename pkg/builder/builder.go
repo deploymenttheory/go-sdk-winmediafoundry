@@ -15,9 +15,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/iso"
-	"github.com/deploymenttheory/winmediafoundry/pkg/progress_counter"
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/iso"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/progress_counter"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim"
 )
 
 // Options configures an ISO build.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	filesapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 )
 
 var downloadCmd = &cobra.Command{

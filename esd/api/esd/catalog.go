@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deploymenttheory/winmediafoundry/esd/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd/shared/models"
 )
 
 // ESDImage is a single Windows installation ESD listed in Microsoft's Media

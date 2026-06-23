@@ -3,7 +3,7 @@ package builds
 import (
 	"testing"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 	"github.com/stretchr/testify/assert"
 )
 

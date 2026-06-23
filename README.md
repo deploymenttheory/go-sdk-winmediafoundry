@@ -1,6 +1,6 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/winmediafoundry)](https://goreportcard.com/report/github.com/deploymenttheory/winmediafoundry)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deploymenttheory/go-sdk-winmediafoundry)](https://goreportcard.com/report/github.com/deploymenttheory/go-sdk-winmediafoundry)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/winmediafoundry)](https://github.com/deploymenttheory/winmediafoundry)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/deploymenttheory/winmediafoundry)](https://github.com/deploymenttheory/go-sdk-winmediafoundry)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)
 
 ## Overview
@@ -34,7 +34,7 @@ oscdimg, or cabextract). It provides three Go library areas plus a CLI:
 ## Installation
 
 ```bash
-go get github.com/deploymenttheory/winmediafoundry
+go get github.com/deploymenttheory/go-sdk-winmediafoundry
 ```
 
 ## Usage
@@ -92,7 +92,7 @@ winmediafoundry iso build ./install.esd ./Windows.iso --label MY_WIN
 ## Creating a Client
 
 ```go
-import "github.com/deploymenttheory/winmediafoundry/windowsuup"
+import "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
 
 client, err := windowsuup.NewClient()
 if err != nil {
@@ -116,7 +116,7 @@ import (
     "time"
     "go.uber.org/zap"
 
-    "github.com/deploymenttheory/winmediafoundry/windowsuup"
+    "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
 )
 
 logger, _ := zap.NewDevelopment()
@@ -134,8 +134,8 @@ client, err := windowsuup.NewClient(
 
 ```go
 import (
-    buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-    "github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+    buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+    "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 )
 
 builds, _, err := client.Builds.FetchBuilds(ctx,
@@ -164,8 +164,8 @@ Each `models.Build` in the result includes `UUID`, `Revision`, `Title`, `Build` 
 
 ```go
 import (
-    filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-    "github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+    filesapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+    "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 )
 
 files, _, err := client.Files.GetFiles(ctx, build,
@@ -231,8 +231,8 @@ URLs and SHA-1 hashes.
 
 ```go
 import (
-    "github.com/deploymenttheory/winmediafoundry/esd"
-    esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
+    "github.com/deploymenttheory/go-sdk-winmediafoundry/esd"
+    esdapi "github.com/deploymenttheory/go-sdk-winmediafoundry/esd/api/esd"
 )
 
 client, _ := esd.NewClient()
@@ -254,7 +254,7 @@ libraries.
 
 ## Constants Reference
 
-All constants live in `github.com/deploymenttheory/winmediafoundry/windowsuup/constants`.
+All constants live in `github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants`.
 
 ### Architectures
 
@@ -332,7 +332,7 @@ ISO9660 framing uses `github.com/diskfs/go-diskfs`.
 ### Build a bootable ISO from an ESD
 
 ```go
-import "github.com/deploymenttheory/winmediafoundry/pkg/builder"
+import "github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/builder"
 
 err := builder.BuildISO("install.esd", "Windows.iso",
     builder.Options{VolumeID: "CCCOMA_X64FRE"})

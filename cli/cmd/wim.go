@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim"
 )
 
 var wimCmd = &cobra.Command{

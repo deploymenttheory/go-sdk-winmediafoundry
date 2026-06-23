@@ -18,8 +18,8 @@ package esd
 import (
 	"fmt"
 
-	esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
-	"github.com/deploymenttheory/winmediafoundry/esd/client"
+	esdapi "github.com/deploymenttheory/go-sdk-winmediafoundry/esd/api/esd"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd/client"
 	"go.uber.org/zap"
 )
 

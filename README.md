@@ -7,7 +7,7 @@
 
 A pure-Go, cross-platform toolkit for **acquiring and building Windows
 installation media** — with no cgo and no external tools (no wimlib, DISM,
-oscdimg, or cabextract). It has two layers:
+oscdimg, or cabextract). It provides three Go library areas plus a CLI:
 
 - **Windows Update service client** (`windowsuup/`) — makes direct SOAP calls to
   `fe3.delivery.mp.microsoft.com` / `fe3cr.delivery.mp.microsoft.com` to discover
@@ -20,6 +20,8 @@ oscdimg, or cabextract). It has two layers:
   images (LZMS / XPRESS / LZX), read CAB archives, write UDF file systems, and
   master bootable ISO9660 + El Torito images, culminating in a one-call
   ESD → bootable ISO builder.
+- **Command-line tool** (`cli/`, `winmediafoundry`) — a Cobra/Viper CLI over all
+  of the above. See [Command-line tool](#command-line-tool).
 
 ## Prerequisites
 
@@ -55,6 +57,36 @@ Run any example directly:
 
 ```bash
 go run ./examples/01_fetch_builds
+```
+
+## Command-line tool
+
+A Cobra/Viper CLI in `cli/` exposes the whole toolkit:
+
+```bash
+go build -o winmediafoundry ./cli
+```
+
+| Command | Description |
+|---|---|
+| `builds` | List Windows Update builds |
+| `files` | List a build's files (`--cdn-urls` to resolve download URLs) |
+| `download` | Download a build's files to a directory |
+| `diff --base --target` | Compare two builds |
+| `esd catalog` | List the Media Creation Tool ESD catalog |
+| `wim info \| tree \| extract <file>` | Inspect or extract a WIM/ESD image |
+| `iso build <esd> <out.iso>` | Build a bootable ISO from an ESD |
+
+Configuration is layered **flags > environment > config file**. Global settings
+may come from `$HOME/.winmediafoundry.yaml`, variables prefixed
+`WINMEDIAFOUNDRY_` (e.g. `WINMEDIAFOUNDRY_ARCH=arm64`,
+`WINMEDIAFOUNDRY_LOG_LEVEL=debug`), or flags (`--arch`, `--ring`, `--sku`,
+`--timeout`, `--log-level`).
+
+```bash
+winmediafoundry esd catalog --edition Professional --architecture x64 --language en-us
+winmediafoundry wim info ./install.esd
+winmediafoundry iso build ./install.esd ./Windows.iso --label MY_WIN
 ```
 
 ## Creating a Client
@@ -334,6 +366,7 @@ The Windows Update **service client** lives under `windowsuup/`, the standalone
 | `pkg/wuproto`, `pkg/wuproto/soap` | WU SOAP protocol types and client (GetCookie → SyncUpdates → GetExtendedUpdateInfo2) |
 | `esd` | ESD catalog entry point — `Client`, `NewClient` (self-contained: own `client`, `shared/models`, `mocks`) |
 | `esd/api/esd` | `Catalog` — fetch + parse the Media Creation Tool `products.cab` |
+| `cli`, `cli/cmd` | Cobra/Viper CLI (`winmediafoundry`) over the WU client, ESD client, and `pkg/` libraries |
 
 ## Contributing
 

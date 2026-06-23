@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pkg/builder` — end-to-end ESD → bootable ISO orchestration (`BuildISO`).
 - `esd` — a standalone Media Creation Tool ESD catalog client (`esd.NewClient`),
   structured like `windowsuup` with its own transport, models, and mocks.
+- `cli/` — a Cobra/Viper command-line tool (`winmediafoundry`) covering builds,
+  files, download, diff, `esd catalog`, `wim info|tree|extract`, and `iso build`,
+  with layered flag / env (`WINMEDIAFOUNDRY_*`) / config-file settings.
 - Examples `05_esd_catalog` through `09_esd_to_iso`.
 
 ### Changed

@@ -20,12 +20,14 @@ const versionDefault = 0x00010d00
 
 // writeNode is a node in the directory tree being written.
 type writeNode struct {
-	name     string
-	isDir    bool
-	attrs    uint32
-	modTime  time.Time
-	hash     [20]byte // zero for directories and empty files
-	children []*writeNode
+	name       string
+	isDir      bool
+	attrs      uint32
+	createTime time.Time
+	accessTime time.Time
+	writeTime  time.Time
+	hash       [20]byte // zero for directories and empty files
+	children   []*writeNode
 }
 
 type blobRec struct {
@@ -148,7 +150,8 @@ func (w *Writer) addChildren(node *writeNode, dir string, dirCount, fileCount, t
 		if err != nil {
 			return fmt.Errorf("wim: stat %s: %w", full, err)
 		}
-		child := &writeNode{name: e.Name(), modTime: info.ModTime()}
+		mod := info.ModTime()
+		child := &writeNode{name: e.Name(), createTime: mod, accessTime: mod, writeTime: mod}
 		switch {
 		case e.IsDir():
 			child.isDir = true
@@ -291,11 +294,10 @@ func appendDentry(buf *[]byte, node *writeNode) int {
 	d := make([]byte, total)
 	le.PutUint64(d[0:], uint64(total)) // length
 	le.PutUint32(d[8:], node.attrs)
-	le.PutUint32(d[12:], 0xffffffff) // security ID: none
-	ft := timeToFiletime(node.modTime)
-	le.PutUint64(d[40:], ft) // creation
-	le.PutUint64(d[48:], ft) // last access
-	le.PutUint64(d[56:], ft) // last write
+	le.PutUint32(d[12:], 0xffffffff)                      // security ID: none
+	le.PutUint64(d[40:], timeToFiletime(node.createTime)) // creation
+	le.PutUint64(d[48:], timeToFiletime(node.accessTime)) // last access
+	le.PutUint64(d[56:], timeToFiletime(node.writeTime))  // last write
 	if !node.isDir {
 		copy(d[64:84], node.hash[:])
 	}

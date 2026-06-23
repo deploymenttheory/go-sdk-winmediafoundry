@@ -63,11 +63,14 @@ func (f *File) walk(prefix string, fn func(string, *File)) {
 var errBadMetadata = errors.New("wim: corrupt image metadata")
 
 // filetimeToTime converts a Windows FILETIME (100-ns intervals since 1601) to a
-// time.Time.
+// time.Time. A zero FILETIME maps to the zero time.Time (an unset timestamp); it
+// would otherwise decode to a year-1601 time whose UnixNano overflows int64.
 func filetimeToTime(low, high uint32) time.Time {
-	nsec := int64(high)<<32 | int64(low)
-	nsec -= 116444736000000000 // to Unix epoch
-	return time.Unix(0, nsec*100).UTC()
+	ft := int64(high)<<32 | int64(low)
+	if ft == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, (ft-116444736000000000)*100).UTC()
 }
 
 // parseImageMetadata parses a decompressed image metadata resource (a security

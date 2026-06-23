@@ -93,11 +93,11 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 		return fmt.Errorf("builder: %w", err)
 	}
 
-	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim"), work); err != nil {
+	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim")); err != nil {
 		return fmt.Errorf("builder: boot.wim: %w", err)
 	}
 	if len(classes.editions) > 0 {
-		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim"), work); err != nil {
+		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim")); err != nil {
 			return fmt.Errorf("builder: install.wim: %w", err)
 		}
 	}
@@ -108,9 +108,10 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 	return nil
 }
 
-// buildWIM extracts each source image to a temporary directory and writes them
-// as the images of a new uncompressed WIM at outPath, preserving order.
-func buildWIM(w *wim.WIM, indices []int, outPath, work string) error {
+// buildWIM writes the given source images as the images of a new uncompressed
+// WIM at outPath, preserving order. Images are copied directly from the source
+// WIM (no extraction to disk), which preserves file attributes/timestamps.
+func buildWIM(w *wim.WIM, indices []int, outPath string) error {
 	out, err := os.Create(outPath) //nolint:gosec // caller-controlled path
 	if err != nil {
 		return err
@@ -122,18 +123,9 @@ func buildWIM(w *wim.WIM, indices []int, outPath, work string) error {
 		return err
 	}
 	for _, idx := range indices {
-		tmp, err := os.MkdirTemp(work, "img-")
-		if err != nil {
-			return err
+		if err := ww.AddImageFromWIM(w, idx, imageName(w, idx)); err != nil {
+			return fmt.Errorf("copy image %d: %w", idx, err)
 		}
-		if err := w.ExtractImage(idx, tmp); err != nil {
-			return fmt.Errorf("extract image %d: %w", idx, err)
-		}
-		name := imageName(w, idx)
-		if err := ww.AddImage(tmp, name); err != nil {
-			return err
-		}
-		_ = os.RemoveAll(tmp)
 	}
 	return ww.Close()
 }

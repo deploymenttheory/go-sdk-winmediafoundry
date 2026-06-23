@@ -144,6 +144,87 @@ func TestWriterMultiImage(t *testing.T) {
 	}
 }
 
+// TestAddImageFromWIM copies an image directly between WIMs and verifies that
+// content, attributes, and timestamps are preserved (unlike extract-then-write).
+func TestAddImageFromWIM(t *testing.T) {
+	src := t.TempDir()
+	writeSrcFile(t, src, "readme.txt", []byte("direct copy"))
+	writeSrcFile(t, src, "dir/data.bin", bytes.Repeat([]byte{0x5A}, 4096))
+
+	srcPath := filepath.Join(t.TempDir(), "src.wim")
+	o1, _ := os.Create(srcPath)
+	if err := CreateFromDir(o1, src, "Source"); err != nil {
+		t.Fatal(err)
+	}
+	o1.Close()
+
+	srcWIM, err := Open(srcPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srcWIM.Close()
+
+	// Snapshot the source tree's metadata.
+	type meta struct {
+		attrs uint32
+		write int64
+	}
+	want := map[string]meta{}
+	srcRoot, _ := srcWIM.OpenImage(1)
+	srcRoot.Walk(func(path string, f *File) {
+		want[path] = meta{f.Attributes, f.LastWriteTime.UnixNano()}
+	})
+
+	dstPath := filepath.Join(t.TempDir(), "dst.wim")
+	o2, _ := os.Create(dstPath)
+	dw, err := NewWriter(o2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dw.AddImageFromWIM(srcWIM, 1, "Copied"); err != nil {
+		t.Fatalf("AddImageFromWIM: %v", err)
+	}
+	if err := dw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	o2.Close()
+
+	dstWIM, err := Open(dstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dstWIM.Close()
+	if dstWIM.Images()[0].Name != "Copied" {
+		t.Errorf("image name = %q", dstWIM.Images()[0].Name)
+	}
+
+	dstRoot, _ := dstWIM.OpenImage(1)
+	got := map[string]meta{}
+	dstRoot.Walk(func(path string, f *File) {
+		got[path] = meta{f.Attributes, f.LastWriteTime.UnixNano()}
+	})
+	for path, w := range want {
+		g, ok := got[path]
+		if !ok {
+			t.Errorf("missing %q in copy", path)
+			continue
+		}
+		if g.attrs != w.attrs || g.write != w.write {
+			t.Errorf("%q metadata not preserved: got %+v want %+v", path, g, w)
+		}
+	}
+
+	// Content survives too.
+	dest := t.TempDir()
+	if err := dstWIM.ExtractImage(1, dest); err != nil {
+		t.Fatal(err)
+	}
+	got1, _ := os.ReadFile(filepath.Join(dest, "readme.txt"))
+	if string(got1) != "direct copy" {
+		t.Errorf("content = %q", got1)
+	}
+}
+
 func TestWriteSpecialCharsImageName(t *testing.T) {
 	src := t.TempDir()
 	writeSrcFile(t, src, "a.txt", []byte("x"))

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/builder"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/builder"
 )
 
 var isoCmd = &cobra.Command{

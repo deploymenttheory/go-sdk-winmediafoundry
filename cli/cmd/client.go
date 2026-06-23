@@ -9,11 +9,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/deploymenttheory/winmediafoundry/esd"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
-	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
+	buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 )
 
 // newLogger builds a console zap logger at the configured level, with timestamps

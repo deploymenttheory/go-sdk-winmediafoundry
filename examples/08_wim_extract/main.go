@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim"
 )
 
 func main() {

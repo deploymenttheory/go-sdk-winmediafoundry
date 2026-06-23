@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/esd"
-	esdapi "github.com/deploymenttheory/winmediafoundry/esd/api/esd"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd"
+	esdapi "github.com/deploymenttheory/go-sdk-winmediafoundry/esd/api/esd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/api/download"
-	downloadmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/api/download/mocks"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/download"
+	downloadmocks "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/download/mocks"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

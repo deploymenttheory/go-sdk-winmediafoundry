@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/builder"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/builder"
 )
 
 func main() {

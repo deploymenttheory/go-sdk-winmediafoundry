@@ -5,7 +5,7 @@ package models
 import (
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/esd/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd/constants"
 )
 
 // Build represents a Windows Update discovered from Microsoft's update service.

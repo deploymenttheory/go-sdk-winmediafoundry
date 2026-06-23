@@ -1,4 +1,4 @@
-module github.com/deploymenttheory/winmediafoundry
+module github.com/deploymenttheory/go-sdk-winmediafoundry
 
 go 1.25.0
 

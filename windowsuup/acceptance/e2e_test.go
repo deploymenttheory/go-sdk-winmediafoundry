@@ -26,10 +26,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/deploymenttheory/winmediafoundry/esd"
-	"github.com/deploymenttheory/winmediafoundry/pkg/wim"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
-	wumodels "github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/wim"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
+	wumodels "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 )
 
 func newE2EClient(t *testing.T) *windowsuup.Client {

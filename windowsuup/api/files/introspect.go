@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 )
 
 // reLang matches a BCP-47 language code embedded in a Windows Update filename.

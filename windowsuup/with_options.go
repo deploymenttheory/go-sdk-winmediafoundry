@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/client"
 	"go.uber.org/zap"
 )
 

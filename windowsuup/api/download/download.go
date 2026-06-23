@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deploymenttheory/winmediafoundry/pkg/progress_counter"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/client"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/progress_counter"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/client"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 	"go.uber.org/zap"
 	"resty.dev/v3"
 )

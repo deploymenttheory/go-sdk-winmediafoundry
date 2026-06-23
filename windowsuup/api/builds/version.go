@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/shared/models"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/shared/models"
 )
 
 // BuildVersion holds the four numeric components of a Windows build string

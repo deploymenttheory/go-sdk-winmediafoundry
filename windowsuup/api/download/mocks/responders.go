@@ -5,7 +5,7 @@ package mocks
 import (
 	"net/http"
 
-	windowsuupmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
+	windowsuupmocks "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/mocks"
 )
 
 const TestCDNURL = "https://download.windowsupdate.com/test/file.esd"

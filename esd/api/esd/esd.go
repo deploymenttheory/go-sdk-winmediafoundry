@@ -16,8 +16,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/deploymenttheory/winmediafoundry/esd/client"
-	"github.com/deploymenttheory/winmediafoundry/pkg/cab"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd/client"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/pkg/cab"
 	"resty.dev/v3"
 )
 

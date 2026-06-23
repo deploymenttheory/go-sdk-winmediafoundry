@@ -14,13 +14,13 @@ import (
 	"testing"
 	"time"
 
-	buildsapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-	filesapi "github.com/deploymenttheory/winmediafoundry/windowsuup/api/files"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
+	buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+	filesapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/files"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
 )
 
 // newAcceptanceClient creates a Client for acceptance tests and fails the test

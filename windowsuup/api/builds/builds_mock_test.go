@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds"
-	buildsmocks "github.com/deploymenttheory/winmediafoundry/windowsuup/api/builds/mocks"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/constants"
-	"github.com/deploymenttheory/winmediafoundry/windowsuup/mocks"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
+	buildsmocks "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds/mocks"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

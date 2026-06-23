@@ -6,7 +6,7 @@ import "strings"
 // ESD catalog does not carry this name directly; each ESD filename instead
 // begins with the base build number (e.g. "26100.4349..."), so a release name
 // is resolved to its build number via ReleaseBuild and then matched against the
-// catalog (see models.ESDCatalog.FilterBuildMajor).
+// catalog (see the ESD catalog's FilterBuildMajor).
 type Release string
 
 // Known Windows 11 feature releases.
@@ -35,7 +35,7 @@ var windows11ReleaseBuilds = map[Release]int{
 //
 // Note: a known release is not guaranteed to be present in the MCT catalog —
 // the catalog typically carries only the current GA release. Resolve the build
-// here, then confirm availability with models.ESDCatalog.FilterBuildMajor.
+// here, then confirm availability with the ESD catalog's FilterBuildMajor.
 func ReleaseBuild(r Release) (int, bool) {
 	b, ok := windows11ReleaseBuilds[Release(strings.ToUpper(string(r)))]
 	return b, ok

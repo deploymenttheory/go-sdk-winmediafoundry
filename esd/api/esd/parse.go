@@ -3,8 +3,6 @@ package esd
 import (
 	"encoding/xml"
 	"fmt"
-
-	"github.com/deploymenttheory/winmediafoundry/esd/shared/models"
 )
 
 // xmlCatalog mirrors the structure of Microsoft's products.xml:
@@ -26,15 +24,15 @@ type xmlFile struct {
 }
 
 // parseCatalog parses a products.xml document into an ESDCatalog.
-func parseCatalog(data []byte) (*models.ESDCatalog, error) {
+func parseCatalog(data []byte) (*ESDCatalog, error) {
 	var doc xmlCatalog
 	if err := xml.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("unmarshal products.xml: %w", err)
 	}
 
-	images := make([]models.ESDImage, 0, len(doc.Files))
+	images := make([]ESDImage, 0, len(doc.Files))
 	for _, f := range doc.Files {
-		images = append(images, models.ESDImage{
+		images = append(images, ESDImage{
 			FileName:     f.FileName,
 			Edition:      f.Edition,
 			Architecture: f.Architecture,
@@ -45,5 +43,5 @@ func parseCatalog(data []byte) (*models.ESDCatalog, error) {
 			URL:          f.FilePath,
 		})
 	}
-	return &models.ESDCatalog{Images: images}, nil
+	return &ESDCatalog{Images: images}, nil
 }

@@ -58,6 +58,34 @@ func (e ESDImage) BuildMajor() int {
 	return n
 }
 
+// archFromFileName extracts the architecture encoded in an ESD filename. MCT
+// ESD names carry an architecture token — "A64FRE" for ARM64, "X64FRE" for x64
+// (e.g. "...CLIENTCONSUMER_RET_A64FRE_en-us.esd"). It returns "ARM64", "x64",
+// or "" when no token is present. This token is authoritative: it lets callers
+// detect a row whose Architecture field disagrees with its own filename.
+func archFromFileName(fileName string) string {
+	up := strings.ToUpper(fileName)
+	switch {
+	case strings.Contains(up, "A64FRE"), strings.Contains(up, "ARM64"):
+		return "ARM64"
+	case strings.Contains(up, "X64FRE"), strings.Contains(up, "AMD64"):
+		return "x64"
+	default:
+		return ""
+	}
+}
+
+// IsARM64 reports whether the image is ARM64 Windows media. When the filename
+// carries an architecture token it is treated as authoritative (so a row
+// mislabeled Architecture="ARM64" but named "...X64FRE..." is correctly
+// rejected); otherwise the Architecture field is trusted.
+func (e ESDImage) IsARM64() bool {
+	if a := archFromFileName(e.FileName); a != "" {
+		return a == "ARM64"
+	}
+	return strings.EqualFold(e.Architecture, "ARM64")
+}
+
 // ESDCatalog is the parsed Media Creation Tool ESD catalog.
 type ESDCatalog struct {
 	// Images holds every ESD entry in the catalog.
@@ -95,6 +123,21 @@ func (c *ESDCatalog) FilterBuildMajor(build int, edition, architecture, language
 	out := make([]ESDImage, 0, len(base))
 	for _, img := range base {
 		if img.BuildMajor() == build {
+			out = append(out, img)
+		}
+	}
+	return out
+}
+
+// FilterARM64BuildMajor returns the ARM64 images whose filename build-major
+// equals build, after applying the edition/language filters. Unlike
+// FilterBuildMajor it cannot be asked for the wrong architecture: ARM64
+// selection is enforced via IsARM64, which also drops rows whose filename token
+// contradicts their Architecture field. A build of 0 disables the build filter.
+func (c *ESDCatalog) FilterARM64BuildMajor(build int, edition, languageCode string) []ESDImage {
+	out := make([]ESDImage, 0)
+	for _, img := range c.FilterBuildMajor(build, edition, "", languageCode) {
+		if img.IsARM64() {
 			out = append(out, img)
 		}
 	}

@@ -65,6 +65,61 @@ func TestFidAdvanceBlockBoundary(t *testing.T) {
 	}
 }
 
+// TestFileEntryLargeFileExtents verifies that a regular file larger than a
+// single short_ad's reach (boot.wim ~1.5 GiB, install.wim >4 GiB) is described
+// by multiple block-aligned extents, with an untruncated 64-bit information
+// length and every extent-length's top two bits (the extent type) clear. A
+// single overflowing short_ad is exactly what made the Windows boot manager
+// unable to read boot.wim.
+func TestFileEntryLargeFileExtents(t *testing.T) {
+	le := binary.LittleEndian
+	w := &imageWriter{}
+
+	cases := []struct {
+		name string
+		size int64
+	}{
+		{"bootwim_1.5GiB", 1496060854},
+		{"installwim_5GiB", 5 * 1024 * 1024 * 1024},
+		{"exactly_maxExtent", maxExtentLen},
+		{"one_over_maxExtent", maxExtentLen + 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			const startBlock = 100
+			n := &node{name: tc.name, size: tc.size, dataLB: startBlock}
+			fe := w.fileEntry(n, fileTypeRegular)
+
+			if got := le.Uint64(fe[56:]); got != uint64(tc.size) {
+				t.Errorf("information length = %d, want %d (truncated?)", got, tc.size)
+			}
+
+			adBytes := le.Uint32(fe[172:])
+			wantExtents := (uint64(tc.size) + maxExtentLen - 1) / maxExtentLen
+			if uint64(adBytes) != wantExtents*8 {
+				t.Fatalf("alloc-desc bytes = %d (%d extents), want %d extents", adBytes, adBytes/8, wantExtents)
+			}
+
+			var sumLen, block uint64 = 0, startBlock
+			for off := 176; off < 176+int(adBytes); off += 8 {
+				raw := le.Uint32(fe[off:])
+				if raw&0xC0000000 != 0 {
+					t.Errorf("extent at %d has non-zero type bits: %#x", off, raw)
+				}
+				extLen := uint64(raw & 0x3FFFFFFF)
+				if loc := uint64(le.Uint32(fe[off+4:])); loc != block {
+					t.Errorf("extent location = %d, want %d (non-contiguous)", loc, block)
+				}
+				block += uint64(blocks(extLen))
+				sumLen += extLen
+			}
+			if sumLen != uint64(tc.size) {
+				t.Errorf("sum of extent lengths = %d, want %d", sumLen, tc.size)
+			}
+		})
+	}
+}
+
 func TestEncodeDStringUTF16(t *testing.T) {
 	// A string with a rune > 0xFF must use 16-bit compression (leading byte 16).
 	b := encodeDString("A误", 32)

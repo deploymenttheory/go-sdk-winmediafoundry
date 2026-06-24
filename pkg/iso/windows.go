@@ -12,6 +12,10 @@ import (
 const (
 	winBIOSBoot = "boot/etfsboot.com"
 	winUEFIBoot = "efi/microsoft/boot/efisys.bin"
+	// winUEFIBootARM64 is the ARM64 UEFI boot loader on the media root. Its
+	// presence marks the media as ARM64 (UEFI-only); x64 media carries
+	// efi/boot/bootx64.efi instead. Lookup keys are lower-cased (see indexTree).
+	winUEFIBootARM64 = "efi/boot/bootaa64.efi"
 	// biosBootLoadSize matches oscdimg's "-boot-load-size 8" for etfsboot.com.
 	biosBootLoadSize = 8
 )

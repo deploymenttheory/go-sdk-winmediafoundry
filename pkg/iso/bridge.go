@@ -49,6 +49,17 @@ func BuildWindowsUDF(mediaRoot, outPath, volumeID string) error {
 		return fmt.Errorf("iso: no Windows boot images under %s", mediaRoot)
 	}
 
+	// ARM64 media is UEFI-only: its boot/etfsboot.com is an x86 BIOS boot sector
+	// that cannot run on AARCH64, and Microsoft's ARM64 ISOs omit the BIOS El
+	// Torito entry. Including it makes the UEFI image a section behind a BIOS
+	// default entry (validation platform 0x00) and makes the firmware log
+	// "Image type X64 can't be loaded on AARCH64 UEFI system". When the ARM64
+	// UEFI loader is present, drop the BIOS entry so the UEFI image becomes the
+	// validation/default entry (platform 0xEF), matching Microsoft's media.
+	if _, isARM64 := index[winUEFIBootARM64]; isARM64 {
+		hasBIOS = false
+	}
+
 	out, err := os.Create(outPath) //nolint:gosec // caller-provided path
 	if err != nil {
 		return fmt.Errorf("iso: create %s: %w", outPath, err)

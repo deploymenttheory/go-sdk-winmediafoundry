@@ -8,6 +8,17 @@ const (
 
 	// filePermsReadAll grants read+execute to owner/group/other.
 	filePermsReadAll = 0x14A5
+
+	// maxExtentLen is the largest byte length a single short allocation
+	// descriptor may record. A short_ad's length field is 30 bits — the top two
+	// bits are the extent type — so it cannot reach 0x40000000 (1 GiB), and the
+	// length of every non-final extent must be a multiple of the logical block
+	// size. 0x3FFFF800 (== 524287*2048) is the greatest block-aligned value below
+	// that limit. Files larger than this (e.g. boot.wim ~1.5 GiB, install.wim
+	// >4 GiB) must be split across several extents; a single short_ad would
+	// overflow its length field into the extent-type bits and produce media that
+	// lenient readers tolerate but the Windows boot manager cannot read.
+	maxExtentLen = 0x3FFFF800
 )
 
 // volStructDesc builds a Volume Structure Descriptor (BEA01/NSR02/TEA01) for the
@@ -161,8 +172,16 @@ func (w *imageWriter) fileEntry(n *node, fileType uint8) []byte {
 		linkCount = 2 + uint16(countChildDirs(n))
 	}
 	le.PutUint16(b[48:], linkCount)
-	le.PutUint64(b[56:], uint64(n.dataLen))                 // information length
-	le.PutUint64(b[64:], uint64(blocks(uint64(n.dataLen)))) // logical blocks recorded
+
+	// information length: a directory's data is its FID list (always < 4 GiB),
+	// a regular file's is its true byte size (which may exceed 4 GiB, so it must
+	// not be taken from the uint32 n.dataLen).
+	infoLen := uint64(n.dataLen)
+	if fileType == fileTypeRegular {
+		infoLen = uint64(n.size)
+	}
+	le.PutUint64(b[56:], infoLen)                 // information length
+	le.PutUint64(b[64:], uint64(blocks(infoLen))) // logical blocks recorded
 	copy(b[72:], encodeTimestamp(n.modTime))
 	copy(b[84:], encodeTimestamp(n.modTime))
 	copy(b[96:], encodeTimestamp(n.modTime))
@@ -171,11 +190,27 @@ func (w *imageWriter) fileEntry(n *node, fileType uint8) []byte {
 	le.PutUint64(b[160:], n.uniqueID)
 	le.PutUint32(b[168:], 0) // length of extended attributes
 
+	// Allocation descriptors: the data occupies a contiguous run of logical
+	// blocks starting at n.dataLB, but a single short_ad cannot describe more
+	// than maxExtentLen bytes, so split the run into successive block-aligned
+	// extents (the final one carries the exact remaining byte count). All extents
+	// are type 0 (recorded and allocated): maxExtentLen keeps the top two bits of
+	// each length field clear. The descriptors fit comfortably in the File Entry
+	// (a >4 GiB install.wim needs only a handful).
 	contentLen := 176
-	if n.dataLen > 0 {
-		le.PutUint32(b[172:], 8) // length of allocation descriptors (one short_ad)
-		copy(b[176:], shortAD(n.dataLen, n.dataLB))
-		contentLen = 184
+	if infoLen > 0 {
+		adOff := 176
+		block := n.dataLB
+		remaining := infoLen
+		for remaining > 0 {
+			ext := min(remaining, maxExtentLen)
+			copy(b[adOff:], shortAD(uint32(ext), block))
+			block += blocks(ext)
+			adOff += 8
+			remaining -= ext
+		}
+		le.PutUint32(b[172:], uint32(adOff-176)) // length of allocation descriptors
+		contentLen = adOff
 	}
 	putTag(b[:contentLen], tagFileEntry, n.feBlock)
 	return b

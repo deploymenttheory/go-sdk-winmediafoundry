@@ -23,6 +23,7 @@ installation media.
 
   builds / files / download / diff   discover and fetch from Windows Update
   esd catalog                        list the Media Creation Tool ESD catalog
+  swdl list / resolve / download     download consumer Windows 11 ISOs
   wim info / tree / extract          inspect and extract WIM/ESD images
   iso build                          master a bootable ISO from an ESD
 

@@ -7,7 +7,7 @@
 
 A pure-Go, cross-platform toolkit for **acquiring and building Windows
 installation media** — with no cgo and no external tools (no wimlib, DISM,
-oscdimg, or cabextract). It provides three Go library areas plus a CLI:
+oscdimg, or cabextract). It provides four Go library areas plus a CLI:
 
 - **Windows Update service client** (`windowsuup/`) — makes direct SOAP calls to
   `fe3.delivery.mp.microsoft.com` / `fe3cr.delivery.mp.microsoft.com` to discover
@@ -16,6 +16,12 @@ oscdimg, or cabextract). It provides three Go library areas plus a CLI:
 - **ESD catalog client** (`esd/`) — a standalone client (same architecture as
   `windowsuup`) that fetches Microsoft's Media Creation Tool catalog
   (`products.cab`) and resolves full installation-ESD download URLs.
+- **Consumer software-download client** (`softwaredownload/`) — a standalone
+  client (same architecture as `windowsuup`) that reproduces Microsoft's
+  consumer Windows 11 ISO download flow: it scrapes the public software-download
+  pages, drives the download-connector handshake to resolve a signed,
+  time-limited ISO link for a chosen edition and language, and streams the ISO
+  to disk.
 - **Windows imaging libraries** (`pkg/`) — read, extract, and write WIM/ESD
   images (LZMS / XPRESS / LZX), read CAB archives, write UDF file systems, and
   master bootable ISO9660 + El Torito images, culminating in a one-call
@@ -74,6 +80,7 @@ go build -o winmediafoundry ./cli
 | `download` | Download a build's files to a directory |
 | `diff --base --target` | Compare two builds |
 | `esd catalog` | List the Media Creation Tool ESD catalog |
+| `swdl list \| resolve \| download` | List, resolve, and download consumer Windows 11 ISOs |
 | `wim info \| tree \| extract <file>` | Inspect or extract a WIM/ESD image |
 | `iso build <esd> <out.iso>` | Build a bootable ISO from an ESD |
 
@@ -252,6 +259,43 @@ err := builder.BuildISO("install.esd", "Windows.iso",
 See [Windows Imaging](#windows-imaging-pure-go) for the underlying `pkg/`
 libraries.
 
+## Consumer Software-Download Client
+
+The standalone `softwaredownload` client (its own `NewClient`, structured like
+`windowsuup`) reproduces Microsoft's consumer Windows 11 ISO download flow
+server-side. It scrapes the public software-download pages to list the available
+product editions, drives the download-connector handshake (session whitelisting,
+SKU lookup) to resolve a signed, time-limited ISO link for a chosen edition and
+language, and — with `WithDownloadDir` — streams the multi-GB ISO straight to
+disk (atomic write, skip-if-already-present).
+
+```go
+import (
+    "github.com/deploymenttheory/go-sdk-winmediafoundry/softwaredownload"
+    sdapi "github.com/deploymenttheory/go-sdk-winmediafoundry/softwaredownload/api/softwaredownload"
+    sdconst "github.com/deploymenttheory/go-sdk-winmediafoundry/softwaredownload/constants"
+)
+
+client, _ := softwaredownload.NewClient()
+
+// List the available editions (x64 and Arm64).
+products, _, err := client.List(ctx, sdapi.WithArch(sdconst.ArchARM64))
+
+// Resolve and download an Arm64 ISO by name, with a terminal progress bar.
+link, _, err := client.GetByName(ctx, "Arm64",
+    sdapi.WithLanguage("en-US"),
+    sdapi.WithDownloadDir("./out"),
+    sdapi.WithProgress(nil),
+)
+fmt.Println(link.FileName, link.LocalPath)
+```
+
+`GetByID` resolves by product-edition id (as returned by `List`), `GetByName` by
+a case-insensitive substring of the edition name. Without `WithDownloadDir` both
+only resolve the signed `DownloadLink` (`URL`, `FileName`, `Arch`, `ExpiresAt`);
+`Download` streams an already-resolved link. The same flow is exposed on the CLI
+as `winmediafoundry swdl list | resolve | download`.
+
 ## Constants Reference
 
 All constants live in `github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants`.
@@ -350,7 +394,8 @@ ISO, use `pkg/wim` directly (`examples/06_wim_info`, `07_wim_tree`,
 ## Package Layout
 
 The Windows Update **service client** lives under `windowsuup/`, the standalone
-**ESD catalog client** under `esd/`, and the reusable **imaging libraries** under
+**ESD catalog client** under `esd/`, the standalone **consumer software-download
+client** under `softwaredownload/`, and the reusable **imaging libraries** under
 `pkg/` (see above).
 
 | Package | Description |
@@ -366,7 +411,9 @@ The Windows Update **service client** lives under `windowsuup/`, the standalone
 | `pkg/wuproto`, `pkg/wuproto/soap` | WU SOAP protocol types and client (GetCookie → SyncUpdates → GetExtendedUpdateInfo2) |
 | `esd` | ESD catalog entry point — `Client`, `NewClient` (self-contained: own `client`, `shared/models`, `mocks`) |
 | `esd/api/esd` | `Catalog` — fetch + parse the Media Creation Tool `products.cab` |
-| `cli`, `cli/cmd` | Cobra/Viper CLI (`winmediafoundry`) over the WU client, ESD client, and `pkg/` libraries |
+| `softwaredownload` | Consumer software-download entry point — `Client`, `NewClient` (self-contained: own `client`, `shared/models`, `mocks`) |
+| `softwaredownload/api/softwaredownload` | `Get` / `List` / `GetByID` / `GetByName` / `Download` — scrape, resolve, and stream consumer Windows 11 ISOs |
+| `cli`, `cli/cmd` | Cobra/Viper CLI (`winmediafoundry`) over the WU client, ESD client, software-download client, and `pkg/` libraries |
 
 ## Contributing
 

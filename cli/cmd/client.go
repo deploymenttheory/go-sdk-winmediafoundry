@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/deploymenttheory/go-sdk-winmediafoundry/esd"
+	"github.com/deploymenttheory/go-sdk-winmediafoundry/softwaredownload"
 	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup"
 	buildsapi "github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/api/builds"
 	"github.com/deploymenttheory/go-sdk-winmediafoundry/windowsuup/constants"
@@ -51,6 +52,18 @@ func newESDClient() (*esd.Client, error) {
 	return esd.NewClient(
 		esd.WithTimeout(viper.GetDuration("timeout")),
 		esd.WithLogger(logger),
+	)
+}
+
+// newSWDLClient builds a consumer software-download client from Viper settings.
+func newSWDLClient() (*softwaredownload.Client, error) {
+	logger, err := newLogger()
+	if err != nil {
+		return nil, err
+	}
+	return softwaredownload.NewClient(
+		softwaredownload.WithTimeout(viper.GetDuration("timeout")),
+		softwaredownload.WithLogger(logger),
 	)
 }
 

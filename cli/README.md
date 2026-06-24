@@ -1,8 +1,9 @@
 # winmediafoundry CLI
 
 A Cobra/Viper command-line tool over the whole toolkit: discover Windows Update
-builds, browse the Media Creation Tool ESD catalog, inspect and extract WIM/ESD
-images, and master bootable ISOs — all pure Go, no external tools.
+builds, browse the Media Creation Tool ESD catalog, download consumer Windows 11
+ISOs, inspect and extract WIM/ESD images, and master bootable ISOs — all pure Go,
+no external tools.
 
 ## Install
 
@@ -66,6 +67,36 @@ winmediafoundry diff --base 26100.3915 --target 26100.4061
 winmediafoundry esd catalog --product windows11 \
   --edition Professional --architecture x64 --language en-us
 ```
+
+### Consumer Windows 11 ISO (swdl)
+
+`swdl` drives Microsoft's consumer software-download flow: it scrapes the public
+Windows 11 ISO download pages, resolves a signed, time-limited link for a chosen
+edition and language, and streams the multi-edition ISO to disk. This is distinct
+from the Windows Update `download` command and the `esd` / `iso build` path — it
+fetches the same consumer ISOs the browser download page serves.
+
+```bash
+# list the available editions (x64 and Arm64)
+winmediafoundry swdl list [--architecture arm64]
+
+# resolve a signed download link without downloading
+# (argument is a product-edition id when all digits, otherwise a name substring)
+winmediafoundry swdl resolve "Arm64" --language en-US
+
+# download the ISO to a directory (re-runs skip an already-complete file)
+winmediafoundry swdl download "Arm64" --out ./out --language en-US --progress
+```
+
+`swdl` flags (per subcommand):
+
+| Flag | Applies to | Default | Description |
+|---|---|---|---|
+| `--architecture` | all | all | filter/select architecture (`x64` or `arm64`) |
+| `--locale` | all | `en-US` | page/connector locale |
+| `--language` | `resolve`, `download` | `English (United States)` | ISO language (e.g. `en-US` or the localized name) |
+| `-o`, `--out` | `download` | `.` | destination directory |
+| `--progress` | `download` | `true` | show a download progress bar |
 
 ### WIM / ESD images
 

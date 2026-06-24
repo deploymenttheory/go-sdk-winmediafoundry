@@ -31,10 +31,10 @@ Describe what actually happened.
 
 ### Environment
 
-- **OS**: [e.g., Windows, macOS, Linux]
-- **Browser**: [if applicable, include browser name and version]
-- **Terraform Version**: [if applicable]
-- **Provider Version**: [if applicable]
+- **OS / architecture**: [e.g., macOS 14 arm64, Windows 11 x64, Linux amd64]
+- **Go version**: [output of `go version`, if building from source]
+- **SDK / module version**: [tag or commit of go-sdk-winmediafoundry]
+- **CLI version**: [if using the `winmediafoundry` CLI]
 - **Other dependencies**: [e.g., specific libraries, versions, etc.]
 
 ### Additional Context

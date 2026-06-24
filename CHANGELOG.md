@@ -22,9 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pkg/builder` — end-to-end ESD → bootable ISO orchestration (`BuildISO`).
 - `esd` — a standalone Media Creation Tool ESD catalog client (`esd.NewClient`),
   structured like `windowsuup` with its own transport, models, and mocks.
+- `softwaredownload` — a standalone consumer software-download client
+  (`softwaredownload.NewClient`), structured like `windowsuup`, that scrapes the
+  Windows 11 ISO download pages, resolves signed download links, and streams the
+  ISO to disk (`Get` / `List` / `GetByID` / `GetByName` / `Download`).
 - `cli/` — a Cobra/Viper command-line tool (`winmediafoundry`) covering builds,
-  files, download, diff, `esd catalog`, `wim info|tree|extract`, and `iso build`,
+  files, download, diff, `esd catalog`, `swdl list|resolve|download`,
+  `wim info|tree|extract`, and `iso build|inspect|extract-efi|fix-eltorito`,
   with layered flag / env (`WINMEDIAFOUNDRY_*`) / config-file settings.
+- `swdl list|resolve|download` CLI commands exposing the `softwaredownload`
+  client for downloading consumer Windows 11 ISOs.
 - Examples `05_esd_catalog` through `09_esd_to_iso`.
 
 ### Changed
@@ -41,20 +48,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - WIM reader: a zero FILETIME (unset timestamp) decoded to a year-1601 time whose
   `UnixNano` overflowed int64; it now maps to the zero `time.Time`.
-
-## [1.1.0] - 2021-06-23
-
-### Added
-
-- Added x [@your_username](https://github.com/your_username)
-
-### Changed
-
-- Changed y [@your_username](https://github.com/your_username)
-
-## [1.0.0] - 2021-06-20
-
-### Added
-
-- Inititated y [@your_username](https://github.com/your_username)
-- Inititated z [@your_username](https://github.com/your_username)

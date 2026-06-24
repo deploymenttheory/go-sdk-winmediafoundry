@@ -1,0 +1,43 @@
+name: release | GoReleaser
+
+# Builds and publishes the winmediafoundry CLI binaries. Triggered by the v* tag
+# that release-please pushes when its release PR merges; GoReleaser appends the
+# archives and checksums to the GitHub release release-please created.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create release assets
+
+jobs:
+  goreleaser:
+    name: '📦 GoReleaser'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0 # full history + tags for changelog/version detection
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
+          cache: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

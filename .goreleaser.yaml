@@ -1,0 +1,68 @@
+# GoReleaser configuration for the winmediafoundry CLI.
+# Versioning and release notes are owned by release-please; this pipeline builds
+# the CLI binaries on the v* tag release-please pushes and appends the archives
+# and checksums to the existing GitHub release (see release.mode below).
+#
+# Test locally without publishing:  goreleaser release --snapshot --clean
+version: 2
+
+project_name: winmediafoundry
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: winmediafoundry
+    main: ./cli
+    binary: winmediafoundry
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/deploymenttheory/go-sdk-winmediafoundry/cli/cmd.version={{ .Version }}
+      - -X github.com/deploymenttheory/go-sdk-winmediafoundry/cli/cmd.commit={{ .Commit }}
+      - -X github.com/deploymenttheory/go-sdk-winmediafoundry/cli/cmd.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: winmediafoundry
+    ids:
+      - winmediafoundry
+    formats:
+      - tar.gz
+    # Windows users expect a .zip.
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - cli/README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# release-please writes the changelog/release notes, so GoReleaser does not.
+changelog:
+  disable: true
+
+release:
+  # Append artifacts to the release release-please already created for the tag,
+  # without overwriting its generated notes.
+  mode: append

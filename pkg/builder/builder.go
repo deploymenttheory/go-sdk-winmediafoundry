@@ -105,11 +105,19 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 		return fmt.Errorf("builder: %w", err)
 	}
 
-	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim"), opts.Progress); err != nil {
+	// boot.wim and install.wim are compressed with LZX to match Microsoft media
+	// and satisfy go-winio's WIM reader, which rejects XPRESS-flagged WIMs as
+	// unsupported (supportedHdrFlags only includes hdrFlagCompressLzx).
+	//
+	// The classify step orders bootImages as [Windows PE, Windows Setup].
+	// Windows Setup (the last image) is the bootable one, so bootIndex equals
+	// len(bootImages). bootmgr reads BootIndex from the WIM header to find the
+	// boot image and BootMetadata to locate its metadata resource.
+	if err := buildWIM(w, classes.bootImages, filepath.Join(sources, "boot.wim"), wim.CompressionLZX, len(classes.bootImages), opts.Progress); err != nil {
 		return fmt.Errorf("builder: boot.wim: %w", err)
 	}
 	if len(classes.editions) > 0 {
-		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim"), opts.Progress); err != nil {
+		if err := buildWIM(w, classes.editions, filepath.Join(sources, "install.wim"), wim.CompressionLZX, 0, opts.Progress); err != nil {
 			return fmt.Errorf("builder: install.wim: %w", err)
 		}
 	}
@@ -148,12 +156,13 @@ func injectExtraFiles(mediaRoot string, extras map[string][]byte) error {
 	return nil
 }
 
-// buildWIM writes the given source images as the images of a new uncompressed
-// WIM at outPath, preserving order. Images are copied directly from the source
-// WIM (no extraction to disk), which preserves file attributes/timestamps. When
+// buildWIM writes the given source images as the images of a new WIM at
+// outPath, preserving order. Images are copied directly from the source WIM (no
+// extraction to disk), which preserves file attributes/timestamps. bootIndex is
+// the 1-based output image number to mark as bootable (0 for none). When
 // progress is non-nil, the (slow) write is reported via a progress bar sized to
 // the images' uncompressed bytes.
-func buildWIM(w *wim.WIM, indices []int, outPath string, progress io.Writer) error {
+func buildWIM(w *wim.WIM, indices []int, outPath string, comp wim.Compression, bootIndex int, progress io.Writer) error {
 	out, err := os.Create(outPath) //nolint:gosec // caller-controlled path
 	if err != nil {
 		return err
@@ -166,10 +175,11 @@ func buildWIM(w *wim.WIM, indices []int, outPath string, progress io.Writer) err
 		dst = bar.WriteSeeker(filepath.Base(outPath), out, sumImageBytes(w, indices))
 	}
 
-	ww, err := wim.NewWriter(dst)
+	ww, err := wim.NewWriterCompressed(dst, comp)
 	if err != nil {
 		return err
 	}
+	ww.SetBootIndex(bootIndex)
 	for _, idx := range indices {
 		if err := ww.AddImageFromWIM(w, idx, imageName(w, idx)); err != nil {
 			return fmt.Errorf("copy image %d: %w", idx, err)

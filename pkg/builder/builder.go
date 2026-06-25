@@ -29,6 +29,12 @@ type Options struct {
 	// Progress, when non-nil, receives a terminal progress bar for the slow
 	// phases (rebuilding boot.wim / install.wim). nil builds silently.
 	Progress io.Writer
+	// ExtraFiles maps ISO-relative, slash-separated paths to file content, staged
+	// into the media tree just before mastering. A file mapped to "autounattend.xml"
+	// lands at the ISO root, where Windows Setup auto-detects it for an unattended
+	// install. Keys are anchored and cleaned so they cannot escape the media root;
+	// intermediate directories are created as needed.
+	ExtraFiles map[string][]byte
 }
 
 // BuildISO assembles a bootable Windows ISO at outISOPath from the ESD/WIM at
@@ -108,9 +114,36 @@ func BuildISOFromWIM(w *wim.WIM, outISOPath string, opts Options) error {
 		}
 	}
 
+	if err := injectExtraFiles(media, opts.ExtraFiles); err != nil {
+		return fmt.Errorf("builder: inject extra files: %w", err)
+	}
+
 	progressf(opts.Progress, "Mastering ISO...\n")
 	if err := iso.BuildWindowsUDF(media, outISOPath, opts.VolumeID); err != nil {
 		return err
+	}
+	return nil
+}
+
+// injectExtraFiles writes opts.ExtraFiles into the staged media tree (rooted at
+// mediaRoot) before the ISO is mastered, so the UDF writer that walks the tree
+// picks them up. Keys are ISO-relative, slash-separated paths; each is anchored
+// at "/" and cleaned, so ".." cannot escape mediaRoot. Intermediate directories
+// are created. A nil/empty map is a no-op.
+func injectExtraFiles(mediaRoot string, extras map[string][]byte) error {
+	rootPrefix := filepath.Clean(mediaRoot) + string(os.PathSeparator)
+	for rel, content := range extras {
+		clean := filepath.Clean("/" + filepath.FromSlash(rel))
+		dst := filepath.Join(mediaRoot, clean)
+		if !strings.HasPrefix(dst, rootPrefix) {
+			return fmt.Errorf("extra file %q escapes media root", rel)
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(dst, content, 0o644); err != nil { //nolint:gosec // staged media files
+			return err
+		}
 	}
 	return nil
 }

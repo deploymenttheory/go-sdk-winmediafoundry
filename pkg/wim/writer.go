@@ -31,10 +31,11 @@ type writeNode struct {
 }
 
 type blobRec struct {
-	hash   [20]byte
-	offset int64
-	size   int64
-	flags  byte
+	hash         [20]byte
+	offset       int64
+	size         int64 // on-disk size (compressed, when flags has resFlagCompressed)
+	originalSize int64 // uncompressed size
+	flags        byte
 }
 
 // imageRec records a written image's metadata resource and catalog info.
@@ -53,20 +54,36 @@ type imageRec struct {
 // finally the blob table, XML catalog, and a header rewrite. Call AddImage once
 // per image, then Close. out must be seekable.
 type Writer struct {
-	out    io.WriteSeeker
-	pos    int64
-	blobs  []blobRec
-	seen   map[[20]byte]bool // blob dedup across all images
-	images []imageRec
+	out       io.WriteSeeker
+	pos       int64
+	blobs     []blobRec
+	seen      map[[20]byte]bool // blob dedup across all images
+	images    []imageRec
+	comp      Compression // resource compression; CompressionNone writes raw
+	bootIndex int         // 1-based boot image index; 0 means none
 }
 
-// NewWriter starts a WIM, reserving the header.
+// NewWriter starts an uncompressed WIM, reserving the header.
 func NewWriter(out io.WriteSeeker) (*Writer, error) {
-	w := &Writer{out: out, seen: map[[20]byte]bool{}}
+	return NewWriterCompressed(out, CompressionNone)
+}
+
+// NewWriterCompressed starts a WIM whose file resources are compressed with comp
+// (CompressionNone writes them raw). boot.wim must be compressed for the
+// firmware to RAM-disk-load it at boot.
+func NewWriterCompressed(out io.WriteSeeker, comp Compression) (*Writer, error) {
+	w := &Writer{out: out, seen: map[[20]byte]bool{}, comp: comp}
 	if err := w.write(make([]byte, headerSize)); err != nil { // header placeholder
 		return nil, err
 	}
 	return w, nil
+}
+
+// SetBootIndex marks the 1-based image number as the bootable image.
+// The header's BootIndex and BootMetadata fields are written during Close.
+// Call with 0 to produce no boot image (the default).
+func (w *Writer) SetBootIndex(n int) {
+	w.bootIndex = n
 }
 
 func (w *Writer) write(b []byte) error {
@@ -103,13 +120,13 @@ func (w *Writer) Close() error {
 	}
 	tableOffset := w.pos
 	for _, b := range w.blobs {
-		if err := w.write(blobEntry(b.hash, b.offset, b.size, b.flags)); err != nil {
+		if err := w.write(blobEntry(b.hash, b.offset, b.size, b.originalSize, b.flags)); err != nil {
 			return err
 		}
 	}
 	// Metadata resource entries, in image order.
 	for _, im := range w.images {
-		if err := w.write(blobEntry(im.metaHash, im.metaOffset, im.metaSize, resFlagMetadata)); err != nil {
+		if err := w.write(blobEntry(im.metaHash, im.metaOffset, im.metaSize, im.metaSize, resFlagMetadata)); err != nil {
 			return err
 		}
 	}
@@ -189,34 +206,42 @@ func (w *Writer) addFileBlob(node *writeNode, path string) error {
 	}
 	w.seen[node.hash] = true
 	offset := w.pos
-	if err := w.write(content); err != nil {
+	onDisk, flags, err := w.writeBlobData(content)
+	if err != nil {
 		return err
 	}
-	w.blobs = append(w.blobs, blobRec{hash: node.hash, offset: offset, size: int64(len(content))})
+	w.blobs = append(w.blobs, blobRec{hash: node.hash, offset: offset, size: onDisk, originalSize: int64(len(content)), flags: flags})
 	return nil
 }
 
-// blobEntry encodes one 50-byte offset-table entry.
-func blobEntry(hash [20]byte, offset, size int64, flags byte) []byte {
+// blobEntry encodes one 50-byte offset-table entry. compressedSize is the
+// on-disk size (low 56 bits, with flags in the high byte); originalSize is the
+// uncompressed size (equal to compressedSize for uncompressed resources).
+func blobEntry(hash [20]byte, offset, compressedSize, originalSize int64, flags byte) []byte {
 	e := make([]byte, blobTableEntrySize)
 	le := binary.LittleEndian
-	le.PutUint64(e[0:], uint64(size)|uint64(flags)<<56)
+	le.PutUint64(e[0:], uint64(compressedSize)|uint64(flags)<<56)
 	le.PutUint64(e[8:], uint64(offset))
-	le.PutUint64(e[16:], uint64(size)) // uncompressed == compressed
-	le.PutUint16(e[24:], 1)            // part number
-	le.PutUint32(e[26:], 1)            // refcount
+	le.PutUint64(e[16:], uint64(originalSize))
+	le.PutUint16(e[24:], 1) // part number
+	le.PutUint32(e[26:], 1) // refcount
 	copy(e[30:], hash[:])
 	return e
 }
 
 func (w *Writer) finalizeHeader(tableOffset, tableSize, xmlOffset, xmlSize int64, imageCount int) error {
+	if w.bootIndex < 0 || w.bootIndex > imageCount {
+		return fmt.Errorf("wim: boot index %d out of range [0, %d]", w.bootIndex, imageCount)
+	}
+
 	hdr := make([]byte, headerSize)
 	le := binary.LittleEndian
 	copy(hdr, imageTag[:])
 	le.PutUint32(hdr[8:], headerSize) // cbSize
 	le.PutUint32(hdr[12:], versionDefault)
-	le.PutUint32(hdr[16:], 0) // flags: uncompressed
-	le.PutUint32(hdr[20:], 0) // chunk size
+	hflags, chunkSize := w.headerCompression()
+	le.PutUint32(hdr[16:], hflags)    // compression flags
+	le.PutUint32(hdr[20:], chunkSize) // chunk size (0 when uncompressed)
 	if _, err := rand.Read(hdr[24:40]); err != nil {
 		return fmt.Errorf("wim: guid: %w", err)
 	}
@@ -225,6 +250,12 @@ func (w *Writer) finalizeHeader(tableOffset, tableSize, xmlOffset, xmlSize int64
 	le.PutUint32(hdr[44:], uint32(imageCount)) // image count
 	writeReshdr(hdr[48:], tableOffset, tableSize)
 	writeReshdr(hdr[72:], xmlOffset, xmlSize)
+
+	if w.bootIndex > 0 {
+		boot := w.images[w.bootIndex-1]
+		writeReshdrf(hdr[96:], boot.metaOffset, boot.metaSize, resFlagMetadata)
+		le.PutUint32(hdr[120:], uint32(w.bootIndex))
+	}
 
 	if _, err := w.out.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("wim: seek header: %w", err)
@@ -238,8 +269,15 @@ func (w *Writer) finalizeHeader(tableOffset, tableSize, xmlOffset, xmlSize int64
 // writeReshdr writes an uncompressed resource descriptor (size==originalSize,
 // no flags) into b.
 func writeReshdr(b []byte, offset, size int64) {
+	writeReshdrf(b, offset, size, 0)
+}
+
+// writeReshdrf writes a resource descriptor with explicit flags into b.
+// compressedSize and originalSize are both set to size (the resource is not
+// chunk-compressed); the flags byte occupies the high 8 bits of the first word.
+func writeReshdrf(b []byte, offset, size int64, flags byte) {
 	le := binary.LittleEndian
-	le.PutUint64(b[0:], uint64(size)) // size + flags(0)
+	le.PutUint64(b[0:], uint64(size)|uint64(flags)<<56)
 	le.PutUint64(b[8:], uint64(offset))
 	le.PutUint64(b[16:], uint64(size))
 }

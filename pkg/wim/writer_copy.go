@@ -42,10 +42,11 @@ func (w *Writer) AddImageFromWIM(src *WIM, index int, name string) error {
 		}
 		w.seen[f.Hash] = true
 		offset := w.pos
-		if err := w.write(data); err != nil {
-			return err
+		onDisk, flags, werr := w.writeBlobData(data)
+		if werr != nil {
+			return werr
 		}
-		w.blobs = append(w.blobs, blobRec{hash: f.Hash, offset: offset, size: int64(len(data))})
+		w.blobs = append(w.blobs, blobRec{hash: f.Hash, offset: offset, size: onDisk, originalSize: int64(len(data)), flags: flags})
 		rec.totalBytes += int64(len(data))
 	}
 

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1](https://github.com/deploymenttheory/go-sdk-winmediafoundry/compare/v0.6.0...v0.6.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* produce bootable LZX-compressed WIMs compatible with go-winio ([654d53c](https://github.com/deploymenttheory/go-sdk-winmediafoundry/commit/654d53ce7099770e757ae53554f53747751b3082))
+* produce bootable LZX-compressed WIMs compatible with go-winio ([0a8ae13](https://github.com/deploymenttheory/go-sdk-winmediafoundry/commit/0a8ae13ba7f6438a61c6f9f75da0bddc2a75af83))
+
 ## [0.6.0](https://github.com/deploymenttheory/go-sdk-winmediafoundry/compare/v0.5.0...v0.6.0) (2026-06-25)
 
 

@@ -1,6 +1,6 @@
 module github.com/deploymenttheory/go-sdk-winmediafoundry
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
@@ -9,7 +9,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/zap v1.28.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	resty.dev/v3 v3.0.0-rc.3
 )
 

@@ -3,7 +3,7 @@ module github.com/deploymenttheory/go-sdk-winmediafoundry
 go 1.26.0
 
 require (
-	github.com/Microsoft/go-winio v0.6.3
+	github.com/Microsoft/go-winio v0.6.4
 	github.com/diskfs/go-diskfs v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
